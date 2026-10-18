@@ -1,0 +1,26 @@
+{
+ "name": "Bitácora de salud",
+ "short_name": "Bitácora",
+ "description": "Alimentación, gym, sueño, agua, suplementos, ánimo y pulso, sin internet.",
+ "lang": "es",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#EDF2F1",
+ "theme_color": "#0B7A75",
+ "icons": [
+  {
+   "src": "icon.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
