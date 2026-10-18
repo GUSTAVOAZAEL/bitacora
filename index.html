@@ -111,6 +111,7 @@ svg.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;strok
 .inp input{flex:1;min-width:0;width:100%;border:0;background:transparent;color:var(--fg);font:500 18px var(--mono);outline:0}
 .inp input[type=text]{font:500 17px var(--body)}
 .inp input[type=time]{font:500 17px var(--mono)}
+.inp input[type=date]{font:500 16px var(--mono)}
 .inp.off{opacity:.45}
 .inp em{font:500 13px var(--mono);color:var(--muted);font-style:normal;margin-left:6px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -237,7 +238,7 @@ nav button[aria-current=page]{color:var(--accent);background:var(--soft)}
 .filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
 .filters .chip{flex:0 0 auto}
 .range{display:flex;gap:6px}
-.range .chip{flex:1;min-height:40px}
+.range .chip{flex:1;min-height:40px;padding:0 4px}
 .chart{width:100%;height:auto;display:block}
 .chart .gl{stroke:var(--line);stroke-width:1;fill:none}
 .chart .tx{fill:var(--muted);font:400 9.5px var(--mono)}
@@ -479,7 +480,7 @@ function seed(){
 
 /* ---------- navegación ---------- */
 var TABS=[['hoy','Hoy','home'],['hist','Historial','list'],['charts','Gráficas','chart'],['datos','Datos','box']];
-var tab='hoy',histFilter='todos',range=7,muscle=null;
+var tab='hoy',histFilter='todos',range=7,muscle=null,rFrom=null,rTo=null,hFrom='',hTo='';
 function renderNav(){
  $('#nav').innerHTML=TABS.map(function(t){return '<button type="button" data-tab="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':'')+'>'+icon(t[2])+t[1]+'</button>'}).join('');
 }
@@ -557,12 +558,15 @@ function renderHoy(){
 /* ---------- Historial ---------- */
 function renderHist(){
  var chips=['todos'].concat(ORDEN).map(function(k){return '<button type="button" class="chip'+(histFilter===k?' on':'')+'" data-filter="'+k+'">'+(k==='todos'?'Todos':TYPES[k].s)+'</button>'}).join('');
- var list=sorted().filter(function(e){return histFilter==='todos'||e.type===histFilter}).slice(0,150);
+ var td=today();
+ var dateUI='<section class="card stack" style="gap:10px" aria-label="Buscar por fecha"><div class="grid2"><label class="fld"><span>Desde</span><span class="inp"><input id="hFrom" type="date" max="'+td+'" value="'+hFrom+'"></span></label><label class="fld"><span>Hasta</span><span class="inp"><input id="hTo" type="date" max="'+td+'" value="'+hTo+'"></span></label></div>'+
+  '<div class="chips"><button type="button" class="chip" data-hq="hoy">Hoy</button><button type="button" class="chip" data-hq="ayer">Ayer</button><button type="button" class="chip" data-hq="todo">Quitar fechas</button></div></section>';
+ var list=sorted().filter(function(e){return histFilter==='todos'||e.type===histFilter}).filter(function(e){var k=dk(e.ts);return !(hFrom&&k<hFrom)&&!(hTo&&k>hTo)}).slice(0,hFrom||hTo?500:150);
  var groups=[],map={};
  list.forEach(function(e){var k=dk(e.ts);if(!map[k]){map[k]=[];groups.push(k)}map[k].push(e)});
- $('#hist').innerHTML='<div class="filters" role="group" aria-label="Filtrar">'+chips+'</div>'+
-  (groups.length?groups.map(function(k){return '<section class="card"><h3>'+dayName(k)+'</h3><div class="list" style="margin-top:6px">'+map[k].map(function(e){return entryRow(e,true)}).join('')+'</div></section>'}).join(''):'<p class="empty">No hay registros de este tipo.</p>')+
-  (db.entries.length>150?'<p class="sub">Se muestran los 150 registros más recientes.</p>':'');
+ $('#hist').innerHTML=dateUI+'<div class="filters" role="group" aria-label="Filtrar">'+chips+'</div>'+
+  (groups.length?groups.map(function(k){return '<section class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3>'+dayName(k)+'</h3><button type="button" class="chip" data-dayview="'+k+'">Ver resumen</button></div><div class="list" style="margin-top:6px">'+map[k].map(function(e){return entryRow(e,true)}).join('')+'</div></section>'}).join(''):'<p class="empty">'+(hFrom||hTo?'No hay registros en esas fechas.':'No hay registros de este tipo.')+'</p>')+
+  (!(hFrom||hTo)&&db.entries.length>150?'<p class="sub">Se muestran los 150 registros más recientes. Usa las fechas para ver días anteriores.</p>':'');
 }
 
 /* ---------- Gráficas ---------- */
@@ -570,12 +574,12 @@ var W=340,PL=40,PR=8,PT=10,PB=24;
 function niceStep(raw){var p=Math.pow(10,Math.floor(Math.log10(raw)));var f=raw/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
 function axis(lo,hi){var span=(hi-lo)||1,step=niceStep(span/4),a=Math.floor(lo/step+1e-9)*step,b=Math.ceil(hi/step-1e-9)*step,t=[];if(b===a)b=a+step;for(var v=a;v<=b+step/2;v+=step)t.push(+v.toFixed(6));return {lo:a,hi:b,ticks:t}}
 function frame(days,ax,H){
- var pw=W-PL-PR,ph=H-PT-PB,slot=pw/days.length,ev=days.length>21?3:days.length>10?2:1;
+ var pw=W-PL-PR,ph=H-PT-PB,slot=pw/days.length,ev=Math.max(1,Math.ceil(days.length/11));
  var Y=function(v){return +(PT+ph*(1-(v-ax.lo)/(ax.hi-ax.lo))).toFixed(2)};
  var X=function(i){return +(PL+slot*(i+.5)).toFixed(2)};
  var s='';
  ax.ticks.forEach(function(t){s+='<line class="gl" x1="'+PL+'" x2="'+(W-PR)+'" y1="'+Y(t)+'" y2="'+Y(t)+'"/><text class="tx" x="'+(PL-6)+'" y="'+(Y(t)+3.5)+'" text-anchor="end">'+fmt(t)+'</text>'});
- days.forEach(function(k,i){if((days.length-1-i)%ev===0)s+='<text class="tx" x="'+X(i)+'" y="'+(H-8)+'" text-anchor="middle">'+(+k.slice(8))+'</text>'});
+ days.forEach(function(k,i){if((days.length-1-i)%ev===0)s+='<text class="tx" x="'+X(i)+'" y="'+(H-8)+'" text-anchor="middle">'+(days.length>31?(+k.slice(8))+'/'+(+k.slice(5,7)):(+k.slice(8)))+'</text>'});
  return {s:s,X:X,Y:Y,slot:slot};
 }
 function svgWrap(s,label,H){return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(label)+'">'+s+'</svg>'}
@@ -607,10 +611,13 @@ function chartCard(title,stat,unit,body,extra,big){
 function hits(vals,goal){var n=vals.filter(function(v){return v!=null}).length,h=vals.filter(function(v){return v!=null&&v>=goal}).length;return 'cumplida '+h+' de '+n+' días con registro'}
 function sickDays(days){var n=0;days.forEach(function(d){for(var i=0;i<db.eps.length;i++){var ep=db.eps[i];if(dk(ep.ini)<=d&&(!ep.fin||dk(ep.fin)>=d)){n++;break}}});return n}
 function renderCharts(){
- var rng=[[0,'Hoy'],[7,'7 días'],[14,'14 días'],[30,'30 días']].map(function(r){return '<button type="button" class="chip'+(range===r[0]?' on':'')+'" data-range="'+r[0]+'">'+r[1]+'</button>'}).join('');
+ var rng=[[0,'Hoy'],[7,'7 días'],[14,'14 días'],[30,'30 días'],['c','Fechas']].map(function(r){return '<button type="button" class="chip'+(range===r[0]?' on':'')+'" data-range="'+r[0]+'">'+r[1]+'</button>'}).join('');
  var head='<div class="range" role="group" aria-label="Periodo">'+rng+'</div>';
- if(range===0){renderChartsHoy(head);return}
- var G=db.goals,days=lastDays(range),has=function(v){return v.some(function(x){return x!=null})},empty='<p class="empty">Sin datos en este periodo.</p>';
+ if(range==='c'){if(!rFrom){rFrom=rTo=today()}head+=customRangeUI()}
+ if(range===0){renderChartsHoy(head,today());return}
+ var days;
+ if(range==='c'){if(rFrom===rTo){renderChartsHoy(head,rFrom);return}days=dayRange(rFrom,rTo)}else days=lastDays(range);
+ var G=db.goals,has=function(v){return v.some(function(x){return x!=null})},empty='<p class="empty">Sin datos en este periodo.</p>';
  var ag=perDay(days,'agua',function(e){return e.ml},'sum'),su=perDay(days,'sueno',function(e){return e.h},'sum'),
   kc=perDay(days,'comida',function(e){return e.kcal},'sum'),pp=perDay(days,'comida',function(e){return e.p},'sum'),
   cc=perDay(days,'comida',function(e){return e.c},'sum'),gg=perDay(days,'comida',function(e){return e.g},'sum'),
@@ -635,8 +642,18 @@ function renderCharts(){
   chartCard('Molestias',null,'',has(mo)?barChart(days,mo,{cls:'m',fixed:1,label:'Intensidad máxima de molestias por día',h:130}):empty,'Días enfermo en el periodo: '+sd)+
   chartCard('Pulso promedio',avg(pu),'bpm',has(pu)?lineChart(days,pu,{label:'Pulso promedio por día',h:150}):empty,has(pm)?'Máximo del periodo: '+fmt(Math.max.apply(null,pm.filter(function(x){return x!=null})))+' bpm':'');
 }
-function renderChartsHoy(head){
- var G=db.goals,k=today(),t=totalsFor(k),te=todays();
+function dayRange(a,b){var out=[],d=parseKey(a),end=parseKey(b);d.setHours(12,0,0,0);end.setHours(12,0,0,0);while(d<=end&&out.length<400){out.push(dk(d));d.setDate(d.getDate()+1)}return out}
+function customRangeUI(){
+ var n=dayRange(rFrom,rTo).length,td=today();
+ return '<section class="card stack" style="gap:10px" aria-label="Elegir fechas"><div class="grid2"><label class="fld"><span>Desde</span><span class="inp"><input id="cFrom" type="date" max="'+td+'" value="'+rFrom+'"></span></label><label class="fld"><span>Hasta</span><span class="inp"><input id="cTo" type="date" max="'+td+'" value="'+rTo+'"></span></label></div>'+
+  '<p class="sub mono">'+(n===1?'Un solo día: ves el detalle de ese día.':n+' días: '+dayName(rFrom)+' → '+dayName(rTo))+'</p></section>';
+}
+function dayList(k){
+ var es=db.entries.filter(function(e){return dk(e.ts)===k}).sort(function(a,b){return a.ts<b.ts?-1:1});
+ return '<section class="card"><h3>Registros del día</h3><div class="list" style="margin-top:6px">'+(es.length?es.map(function(e){return entryRow(e,false)}).join(''):'<p class="empty">No hay registros ese día.</p>')+'</div></section>';
+}
+function renderChartsHoy(head,k){
+ var G=db.goals,t=totalsFor(k),te=db.entries.filter(function(e){return dk(e.ts)===k});
  var mx=Math.max(1,Math.max.apply(null,MOMENTOS.map(function(m){return t.meals[m].kcal})));
  var meals=MOMENTOS.map(function(m){var x=t.meals[m];return '<div class="mealrow"><span class="nm" style="font:600 15px var(--display);letter-spacing:.05em;text-transform:uppercase">'+m+'</span><div class="bar"><i style="width:'+Math.round(x.kcal/mx*100)+'%"></i></div><span class="mono sub">'+fmt(x.kcal)+' kcal · P '+fmt(x.p)+'</span></div>'}).join('');
  var an=te.filter(function(e){return e.type==='animo'}).sort(function(a,b){return a.ts<b.ts?1:-1})[0];
@@ -645,15 +662,15 @@ function renderChartsHoy(head){
  var sup=te.filter(function(e){return e.type==='suple'}).map(function(e){return e.item});
  var pcw=Math.min(100,Math.round(t.ml/G.ml*100));
  $('#charts').innerHTML=head+
-  '<section class="card stack" style="gap:14px"><h3>Hoy</h3>'+dayPanel(t,false)+'</section>'+
+  '<section class="card stack" style="gap:14px"><h3>'+esc(dayName(k))+'</h3>'+dayPanel(t,false)+'</section>'+
   '<section class="card"><h3>Por comida</h3><div style="margin-top:6px">'+meals+'</div></section>'+
   '<section class="card"><div class="stats" style="display:grid;grid-template-columns:1fr 1fr;gap:16px 20px">'+
-   '<div><span class="k">Sueño (despertares de hoy)</span><span class="v">'+(t.h?fmt(t.h):'—')+'<small>h</small></span></div>'+
+   '<div><span class="k">Sueño (despertares ese día)</span><span class="v">'+(t.h?fmt(t.h):'—')+'<small>h</small></span></div>'+
    '<div><span class="k">Ánimo</span><span class="v">'+(an?'<span class="emo" style="font-size:30px">'+ANIMO[an.nivel-1].e+'</span>':'—')+'</span><span class="sub">'+(an?ANIMO[an.nivel-1].l:'sin registro')+'</span></div>'+
    '<div><span class="k">Gym</span><span class="v">'+(gy?esc(gy.rutina):'—')+'</span><span class="sub">'+(gy&&gy.animoGym?GYMOOD[gy.animoGym-1].l:'sin registro')+'</span></div>'+
-   '<div><span class="k">Suplementos</span><span class="sub" style="color:var(--fg);font-size:16px">'+(sup.length?esc(sup.join(', ')):'ninguno aún')+'</span></div>'+
+   '<div><span class="k">Suplementos</span><span class="sub" style="color:var(--fg);font-size:16px">'+(sup.length?esc(sup.join(', ')):'ninguno')+'</span></div>'+
    '<div><span class="k">Pulso</span><span class="v">'+(pu&&pu.prom!=null?fmt(pu.prom):'—')+'<small>bpm prom</small></span></div>'+
-  '</div></section>';
+  '</div></section>'+dayList(k);
 }
 
 /* ---------- Datos ---------- */
@@ -1021,7 +1038,7 @@ function doSave(name){
 }
 
 /* ---------- eventos ---------- */
-var SEL='[data-open],[data-quick],[data-tab],[data-filter],[data-range],[data-del],[data-close],[data-act],[data-pick],[data-tog],[data-card],[data-cardedit],[data-cardnew],[data-save],[data-tm],[data-addg],[data-tagedit],[data-undo],[data-delm],[data-addm]';
+var SEL='[data-open],[data-quick],[data-tab],[data-filter],[data-hq],[data-dayview],[data-range],[data-del],[data-close],[data-act],[data-pick],[data-tog],[data-card],[data-cardedit],[data-cardnew],[data-save],[data-tm],[data-addg],[data-tagedit],[data-undo],[data-delm],[data-addm]';
 document.addEventListener('click',function(e){
  var t=e.target.closest(SEL);
  if(!t){if(e.target.id==='scrim')closeSheet();return}
@@ -1031,7 +1048,9 @@ document.addEventListener('click',function(e){
  else if(d.undo){removeEntry(d.undo);$('#toast').hidden=true}
  else if(d.tab)showTab(d.tab);
  else if(d.filter){histFilter=d.filter;renderHist()}
- else if(d.range!=null){range=+d.range;renderCharts()}
+ else if(d.hq){if(d.hq==='hoy'){hFrom=hTo=today()}else if(d.hq==='ayer'){hFrom=hTo=dayKeyOff(1)}else{hFrom=hTo=''}renderHist()}
+ else if(d.dayview){rFrom=rTo=d.dayview;range='c';showTab('charts')}
+ else if(d.range!=null){range=d.range==='c'?'c':+d.range;renderCharts()}
  else if('close' in d)closeSheet();
  else if(d.pick&&st){
   var v=d.n?+d.val:d.val;setP(st,d.pick,v);st.err='';
@@ -1097,6 +1116,15 @@ document.addEventListener('input',function(e){
 document.addEventListener('change',function(e){
  var t=e.target;
  if(t.id==='selMuscle'){muscle=t.value;renderCharts();return}
+ if(t.id==='cFrom'||t.id==='cTo'){
+  var v0=t.value;if(!v0)return;var tdy=today();if(v0>tdy)v0=tdy;
+  if(t.id==='cFrom'){rFrom=v0;if(rTo<rFrom)rTo=rFrom}else{rTo=v0;if(rFrom>rTo)rFrom=rTo}
+  if(dayRange(rFrom,rTo).length>366){var d0=parseKey(rTo);d0.setDate(d0.getDate()-365);rFrom=dk(d0)}
+  renderCharts();return}
+ if(t.id==='hFrom'||t.id==='hTo'){
+  var hv=t.value,tdh=today();if(hv>tdh)hv=tdh;
+  if(t.id==='hFrom'){hFrom=hv;if(hv&&hTo&&hTo<hv)hTo=hv}else{hTo=hv;if(hv&&hFrom&&hFrom>hv)hFrom=hv}
+  renderHist();return}
  var gm={s_kcal:'kcal',s_p:'p',s_c:'c',s_g:'g',s_meta:'ml'};
  if(gm[t.id]){var v=+t.value;if(v>0){db.goals[gm[t.id]]=v;persist();renderHoy()}return}
  if(t.id==='s_vaso'){var vv=+t.value;if(vv>0){db.vasoMl=vv;persist();renderHoy()}return}
