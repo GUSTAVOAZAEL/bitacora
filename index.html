@@ -151,9 +151,14 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
 .pvm .v{font-size:26px}
 .pvm .p .v{color:var(--c-p)}.pvm .c .v{color:var(--c-c)}.pvm .g .v{color:var(--c-g)}
 /* pendientes de hoy */
-.chk{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;border-top:1px solid var(--line);padding-top:12px}
-.ck2{min-height:58px;border:1px dashed var(--line);background:transparent;color:var(--muted);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font:600 9.5px var(--display);letter-spacing:0;white-space:nowrap;text-transform:uppercase;padding:4px 0;min-width:0;overflow:hidden}
-.ck2 svg{width:20px;height:20px}
+.chk{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;border-top:1px solid var(--line);padding-top:14px}
+.ck2{min-height:56px;border:1.5px dashed var(--line);background:transparent;color:var(--muted);border-radius:12px;display:flex;align-items:center;justify-content:center;gap:4px;font:600 min(13px,3.15vw) var(--display);letter-spacing:0;white-space:nowrap;text-transform:uppercase;padding:0 2px;min-width:0;overflow:hidden}
+.ck2 svg{width:22px;height:22px;flex:none}
+.ck2:active{transform:scale(.97)}
+.tap{cursor:pointer;border-radius:14px;margin:-6px;padding:6px;transition:background .15s}
+.tap:active{background:var(--soft)}
+.tap:focus-visible{outline:3px solid var(--accent)}
+.taphint{font:500 11px var(--mono);color:var(--muted);letter-spacing:.03em}
 .ck2.ok{background:var(--ok);border:1px solid var(--ok);color:var(--ok-ink)}
 .ck2.part{border:1.5px solid var(--ok);color:var(--ok)}
 .ci-edit{position:absolute;top:6px;right:6px;width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--muted);display:flex;align-items:center;justify-content:center;padding:0}
@@ -581,11 +586,11 @@ function dayBars(t){
  }
  return row('Proteína',t.p,G.p,'g','p',true)+row('Carbohidratos',t.c,G.c,'g','c')+row('Grasa',t.g,G.g,'g','g')+row('Calorías',t.kcal,G.kcal,'kcal','kc');
 }
-function dayPanel(t,buttons){
- var G=db.goals,rem=Math.round(G.ml-t.ml);
- return '<div class="dp"><div class="wcol">'+bottleSVG(t.ml,G.ml)+'<span class="v">'+fmt(t.ml)+'</span><span class="sub mono">de '+fmt(G.ml)+' ml</span><span class="sub">'+(rem>0?'Faltan '+fmt(rem):'Meta cumplida')+'</span>'+
+function dayPanel(t,buttons,tap){
+ var G=db.goals,rem=Math.round(G.ml-t.ml),ta=function(k,l){return tap?' tap" role="button" tabindex="0" data-open="'+k+'" aria-label="'+l+'"':'"'};
+ return '<div class="dp"><div class="wcol'+ta('agua','Registrar agua')+'>'+bottleSVG(t.ml,G.ml)+'<span class="v">'+fmt(t.ml)+'</span><span class="sub mono">de '+fmt(G.ml)+' ml</span><span class="sub">'+(rem>0?'Faltan '+fmt(rem):'Meta cumplida')+'</span>'+
   (buttons?'<button class="primary small" type="button" data-quick="vaso">+ '+fmt(db.vasoMl)+' ml</button><button class="ghost small" type="button" data-quick="500">+ 500 ml</button>':'')+'</div>'+
-  '<div class="mbars" style="gap:14px">'+dayBars(t)+'</div></div>';
+  '<div class="mbars'+ta('comida','Registrar comida')+' style="gap:14px">'+dayBars(t)+'</div></div>';
 }
 function kcalRing(t){
  var G=db.goals,rem=Math.round(G.kcal-t.kcal),over=rem<0,r=52,C=2*Math.PI*r,pc=Math.min(1,G.kcal>0?t.kcal/G.kcal:0);
@@ -626,8 +631,7 @@ function renderHoy(){
  var recent=sorted().filter(function(e){return dk(e.ts)===today()}).slice(0,6);
  var remMl=Math.round(G.ml-t.ml);
  $('#hoy').innerHTML=banners+
- '<section class="card stack" aria-label="Resumen de hoy" style="gap:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3>Hoy</h3><button type="button" class="chip" data-act="widget">↻ Widget</button></div>'+dayPanel(t,false)+statusRow()+'</section>'+
- '<section aria-label="Registrar"><div class="tiles">'+tiles+'</div></section>'+
+ '<section class="card stack" aria-label="Resumen de hoy" style="gap:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><h3>Hoy</h3><span class="taphint">Toca para registrar</span></div><button type="button" class="chip" data-act="widget">↻ Widget</button></div>'+dayPanel(t,false,true)+statusRow()+'</section>'+
  '<section class="card" aria-label="Registros de hoy"><h3>Registros de hoy</h3><div class="list" style="margin-top:6px">'+
   (recent.length?recent.map(function(e){return entryRow(e,true)}).join(''):'<p class="empty">Aún no registras nada hoy. Toca un botón de arriba.</p>')+'</div></section>';
 }
@@ -1484,7 +1488,10 @@ document.addEventListener('pointermove',function(e){
 });
 function endDrag(){if(SH&&SH.kind==='sueno')SH.st.drag=null}
 document.addEventListener('pointerup',endDrag);document.addEventListener('pointercancel',endDrag);
-document.addEventListener('keydown',function(e){if(e.key==='Escape'&&SH)closeSheet()});
+document.addEventListener('keydown',function(e){
+ if(e.key==='Escape'&&SH){closeSheet();return}
+ var t=e.target;if((e.key==='Enter'||e.key===' ')&&t&&t.getAttribute&&t.getAttribute('role')==='button'&&t.dataset.open){e.preventDefault();openSheet(t.dataset.open)}
+});
 $('#sheetClose').addEventListener('click',closeSheet);
 
 function renderAll(){
