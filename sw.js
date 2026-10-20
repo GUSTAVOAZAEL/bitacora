@@ -1,11 +1,12 @@
 /* Service worker de Bitácora de salud.
    Guarda la app en el teléfono para abrirla sin internet.
    Cuando cambies cualquier archivo de la app, sube el número de VERSION. */
-var VERSION='bitacora-v19';
+var VERSION='bitacora-v20';
 var FILES=['./','index.html','manifest.webmanifest','icon.png'];
 
 self.addEventListener('install',function(e){
-  e.waitUntil(caches.open(VERSION).then(function(c){return c.addAll(FILES)}).then(function(){return self.skipWaiting()}));
+  /* cache:'reload' baja los archivos frescos del servidor, no la copia que el navegador tenga guardada */
+  e.waitUntil(caches.open(VERSION).then(function(c){return c.addAll(FILES.map(function(f){return new Request(f,{cache:'reload'})}))}).then(function(){return self.skipWaiting()}));
 });
 self.addEventListener('activate',function(e){
   e.waitUntil(caches.keys().then(function(ks){
