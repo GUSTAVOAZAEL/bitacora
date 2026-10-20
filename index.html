@@ -1838,7 +1838,7 @@ function hrDayCard(k){
  var W2=340,H2=170,L=34,R=8,T=10,B=22,ax=axis(sm.min-6,sm.max+6);
  var X=function(i){return +(L+(W2-L-R)*i/(HRS-1)).toFixed(2)},Y=function(v){return +(T+(H2-T-B)*(1-(v-ax.lo)/(ax.hi-ax.lo))).toFixed(2)},base=Y(ax.lo);
  var g='';ax.ticks.forEach(function(t){g+='<line class="gl" x1="'+L+'" x2="'+(W2-R)+'" y1="'+Y(t)+'" y2="'+Y(t)+'"/><text class="tx" x="'+(L-6)+'" y="'+(Y(t)+3.5)+'" text-anchor="end">'+fmt(t)+'</text>'});
- [0,6,12,18,24].forEach(function(h){g+='<text class="tx" x="'+X(Math.min(HRS-1,h*12))+'" y="'+(H2-7)+'" text-anchor="'+(h===0?'start':h===24?'end':'middle')+'">'+h+'h</text>'});
+ g+=hourTicks(function(h){return X(Math.min(HRS-1,h*12))},base,H2);
  var segs=[],cur=null,prev=-9;
  a.forEach(function(v,i){if(!v)return;if(!cur||i-prev>3){cur=[];segs.push(cur)}cur.push(i);prev=i});
  segs.forEach(function(sg){
@@ -1862,6 +1862,13 @@ function hrDayCard(k){
 /* DaFit rotula cada bloque de 5 min con su hora de cierre */
 /* promedio de la última hora (12 lecturas de 5 min hacia atrás) */
 function rollAvg(a){var out=[];for(var i=0;i<HRS;i++){if(!a[i]){out.push(null);continue}var w=a.slice(Math.max(0,i-11),i+1).filter(function(x){return x>0});out.push(w.length>=3?Math.round(w.reduce(function(x,y){return x+y},0)/w.length):null)}return out}
+/* eje de horas: rayita cada hora, más larga y con número cada 3 h */
+function hourTicks(xf,y0,H){
+ var g='<line x1="'+xf(0).toFixed(2)+'" x2="'+xf(24).toFixed(2)+'" y1="'+y0+'" y2="'+y0+'" style="stroke:var(--muted);stroke-width:1;opacity:.6"/>';
+ for(var h=0;h<=24;h++){var x=xf(h).toFixed(2),big=h%3===0;g+='<line x1="'+x+'" x2="'+x+'" y1="'+y0+'" y2="'+(y0+(big?5:3))+'" style="stroke:var(--muted);stroke-width:'+(big?1.2:.9)+';opacity:'+(big?.9:.6)+'"/>';
+  if(big)g+='<text class="tx" x="'+x+'" y="'+(H-4)+'" text-anchor="'+(h===0?'start':h===24?'end':'middle')+'">'+h+'</text>'}
+ return g;
+}
 function hourAvgs(a){var h=[];for(var i=0;i<24;i++){var v=a.slice(i*12,i*12+12).filter(function(x){return x>0});h.push(v.length?Math.round(v.reduce(function(x,y){return x+y},0)/v.length):null)}return h}
 function hourTxt(a,i){var r=rollAvg(a)[i],h=Math.floor(i/12),hv=hourAvgs(a)[h];return (r!=null?'Última hora: '+r+' bpm':'')+(r!=null&&hv!=null?' · ':'')+(hv!=null?'de '+pad(h)+' a '+pad(h+1)+' h: '+hv:'')}
 function hourBars(a,sm){
@@ -1870,7 +1877,7 @@ function hourBars(a,sm){
  var Y=function(v){return +(T+(H2-T-B)*(1-(v-lo)/(hi-lo))).toFixed(2)},sl=(W2-L-R)/24,g='';
  hv.forEach(function(v,i){if(v==null)return;var y=Y(v),x=L+sl*i+1;g+='<rect x="'+x.toFixed(2)+'" y="'+y+'" width="'+(sl-2).toFixed(2)+'" height="'+(Y(lo)-y).toFixed(2)+'" rx="1.5" style="fill:'+(v>sm.prom?'var(--bad)':'var(--accent)')+';opacity:'+(v>sm.prom?.85:.55)+'"/>'});
  g+='<line x1="'+L+'" x2="'+(W2-R)+'" y1="'+Y(sm.prom)+'" y2="'+Y(sm.prom)+'" style="stroke:var(--bad);stroke-width:1;stroke-dasharray:4 3"/>';
- [0,6,12,18,24].forEach(function(h){g+='<text class="tx" x="'+(L+sl*h)+'" y="'+(H2-5)+'" text-anchor="'+(h===0?'start':h===24?'end':'middle')+'">'+h+'h</text>'});
+ g+=hourTicks(function(h){return L+sl*h},Y(lo),H2);
  g+='<text class="tx" x="'+(L-6)+'" y="'+(Y(sm.prom)+3)+'" text-anchor="end">'+sm.prom+'</text>';
  return '<p class="mini" style="margin-top:10px">Promedio por hora · en rojo, las horas arriba de tu promedio del día</p>'+svgWrap(g,'Promedio de pulso por hora',H2);
 }
