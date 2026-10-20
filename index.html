@@ -386,10 +386,10 @@ select{min-height:44px;border:1px solid var(--line);background:var(--bg);color:v
 .mealrow{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0}
 .mealrow .bar{margin-top:0}
 .chipx{display:inline-flex;gap:6px;align-items:center}
-.hoyt{font:500 13px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;margin:6px 0 0;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.head{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:50px auto;align-items:end;column-gap:8px}
-.head h1{align-self:end;line-height:1}
-.head .hoyt{grid-column:1 / -1}
+.hoyt{font:500 12.5px/1.2 var(--body);letter-spacing:.01em;text-transform:none;margin:4px 0 0;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.head{min-height:50px}
+.headl{display:flex;flex-direction:column;justify-content:flex-end;min-width:0;height:50px}
+.head h1{font-size:30px;line-height:1}
 .recs{display:flex;flex-direction:column}
 .recs>div{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .recs>div:first-child{border-top:0}
@@ -417,10 +417,9 @@ details.dsec[open] .chev{transform:rotate(-135deg);margin-top:4px}
 
 <div class="wrap">
   <header class="head">
-    <h1>Bitácora</h1>
+    <div class="headl"><h1>Bitácora</h1><div class="hoyt" id="fecha"></div></div>
     <div class="headr"><canvas id="monito" width="56" height="20" aria-hidden="true"></canvas>
 <button id="gear" class="gear" type="button" data-open="tema" aria-label="Tema de la app" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5"/><circle cx="12" cy="12" r="6.6"/></svg></button></div>
-    <div class="hoyt" id="fecha"></div>
   </header>
 
   <main id="hoy" class="stack"></main>
@@ -2050,7 +2049,7 @@ function temaView(){
 if(window.matchMedia){try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){applyTheme();if(SH&&SH.kind==='tema')drawSheet()})}catch(_){}}
 
 function renderAll(){
- var n=new Date(),fe=$('#fecha');if(fe)fe.textContent='Hoy · '+DIASL[n.getDay()]+' '+n.getDate()+' de '+MESESL[n.getMonth()];
+ var n=new Date(),fe=$('#fecha');if(fe){var ft='Hoy · '+DIASL[n.getDay()]+' '+n.getDate()+' de '+MESESL[n.getMonth()];if(ft.length>26)ft='Hoy · '+DIASL[n.getDay()]+' '+n.getDate()+' '+['ene.','feb.','mar.','abr.','may.','jun.','jul.','ago.','sept.','oct.','nov.','dic.'][n.getMonth()];fe.textContent=ft}
  renderNav();
  if(tab==='hoy')renderHoy();if(tab==='hist')renderHist();if(tab==='charts')renderCharts();
 }
