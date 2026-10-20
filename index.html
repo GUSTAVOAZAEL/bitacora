@@ -386,7 +386,10 @@ select{min-height:44px;border:1px solid var(--line);background:var(--bg);color:v
 .mealrow{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0}
 .mealrow .bar{margin-top:0}
 .chipx{display:inline-flex;gap:6px;align-items:center}
-.hoyt{font:500 13px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;margin:-4px 0 -2px;color:var(--muted)}
+.hoyt{font:500 13px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;margin:6px 0 0;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.head{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:50px auto;align-items:end;column-gap:8px}
+.head h1{align-self:end;line-height:1}
+.head .hoyt{grid-column:1 / -1}
 .recs{display:flex;flex-direction:column}
 .recs>div{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .recs>div:first-child{border-top:0}
@@ -414,9 +417,10 @@ details.dsec[open] .chev{transform:rotate(-135deg);margin-top:4px}
 
 <div class="wrap">
   <header class="head">
-    <div><h1>Bitácora</h1></div>
+    <h1>Bitácora</h1>
     <div class="headr"><canvas id="monito" width="56" height="20" aria-hidden="true"></canvas>
 <button id="gear" class="gear" type="button" data-open="tema" aria-label="Tema de la app" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5"/><circle cx="12" cy="12" r="6.6"/></svg></button></div>
+    <div class="hoyt" id="fecha"></div>
   </header>
 
   <main id="hoy" class="stack"></main>
@@ -731,8 +735,7 @@ function renderHoy(){
  var tiles=ORDEN.map(function(k){return '<button class="tile" type="button" data-open="'+k+'">'+icon(TYPES[k].i)+TYPES[k].s+'</button>'}).join('');
  var recent=sorted().filter(function(e){return dk(e.ts)===today()}).slice(0,6);
  var remMl=Math.round(G.ml-t.ml);
- var nd=new Date(),fecha='Hoy · '+DIASL[nd.getDay()]+' '+nd.getDate()+' de '+MESESL[nd.getMonth()];
- $('#hoy').innerHTML='<h2 class="hoyt">'+fecha+'</h2>'+banners+
+ $('#hoy').innerHTML=banners+
  '<section class="card stack" aria-label="Resumen de hoy" style="gap:12px;padding:14px">'+dayPanel(t,false,true)+statusRow()+'</section>'+
  (hrDayCard(today())||'<section class="card stack" style="gap:10px"><h3>Pulso del día</h3><p class="sub">Aún no hay lecturas de DaFit para hoy.</p><label class="ghost" for="dafitHoy" style="display:flex;align-items:center;justify-content:center;cursor:pointer">Actualizar desde DaFit</label><input id="dafitHoy" data-dafit="1" class="sr" type="file" multiple></section>');
 }
@@ -2047,7 +2050,7 @@ function temaView(){
 if(window.matchMedia){try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){applyTheme();if(SH&&SH.kind==='tema')drawSheet()})}catch(_){}}
 
 function renderAll(){
- var n=new Date(),fe=$('#fecha');if(fe)fe.textContent=DIAS[n.getDay()]+' '+n.getDate()+' '+MESES[n.getMonth()];
+ var n=new Date(),fe=$('#fecha');if(fe)fe.textContent='Hoy · '+DIASL[n.getDay()]+' '+n.getDate()+' de '+MESESL[n.getMonth()];
  renderNav();
  if(tab==='hoy')renderHoy();if(tab==='hist')renderHist();if(tab==='charts')renderCharts();
 }
