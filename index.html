@@ -57,6 +57,19 @@ h3{font:600 17px/1.1 var(--display);letter-spacing:.05em;text-transform:uppercas
 p{margin:0}
 .emo{font-family:var(--emoji);font-style:normal;line-height:1}
 .head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.gear{width:44px;height:44px;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:12px;display:flex;align-items:center;justify-content:center;padding:0;flex:none}
+.gear svg{width:24px;height:24px}
+.thg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.th{border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:14px;padding:8px;text-align:left;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+.th.on{box-shadow:inset 0 0 0 2px var(--accent);border-color:var(--accent)}
+.th .mk{border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;height:74px}
+.th .mk i{display:block;border-radius:6px}
+.th b{font-weight:600;font-size:15px}
+.th .sub{font-size:12px;line-height:1.3}
+.sw{display:flex;flex-wrap:wrap;gap:10px}
+.swb{display:flex;flex-direction:column;align-items:center;gap:4px;background:transparent;border:0;color:var(--fg);font:500 11px var(--body);padding:0;width:58px;cursor:pointer}
+.swb span.c{width:44px;height:44px;border-radius:50%;border:3px solid var(--bg);box-shadow:0 0 0 1px var(--line)}
+.swb.on span.c{box-shadow:0 0 0 2.5px var(--accent)}
 .date{font:500 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
 .stack{display:flex;flex-direction:column;gap:16px}
@@ -355,6 +368,7 @@ select{min-height:44px;border:1px solid var(--line);background:var(--bg);color:v
 <div class="wrap">
   <header class="head">
     <div><div class="date" id="fecha"></div><h1>Bitácora</h1></div>
+    <button id="gear" class="gear" type="button" data-open="tema" aria-label="Tema de la app" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5"/><circle cx="12" cy="12" r="6.6"/></svg></button>
   </header>
 
   <main id="hoy" class="stack"></main>
@@ -589,7 +603,7 @@ function renderNav(){
  $('#nav').innerHTML=TABS.map(function(t){return '<button type="button" data-tab="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':'')+'>'+icon(t[2])+t[1]+'</button>'}).join('');
 }
 function showTab(t){
- tab=t;TABS.forEach(function(x){$('#'+x[0]).hidden=x[0]!==t});renderNav();
+ tab=t;TABS.forEach(function(x){$('#'+x[0]).hidden=x[0]!==t});renderNav();$('#gear').hidden=t!=='datos';
  if(t==='datos')renderDatos();if(t==='charts')renderCharts();if(t==='hist')renderHist();if(t==='hoy')renderHoy();
  window.scrollTo(0,0);
 }
@@ -909,6 +923,7 @@ function iconRow(d,emoPath,path,ph){
 
 /* estados iniciales */
 var INIT={
+ tema:function(){return {err:''}},
  agua:function(){return {ml:db.vasoMl,err:''}},
  comida:function(){return {momento:momentoDef(),fil:'Todas',porc:1,ed:null,err:''}},
  gym:function(){return gymInit()},
@@ -1133,6 +1148,7 @@ var VIEWS={
   return prodForm('np',st.np)+errP()+(st.np.id&&st.np.confirm?'<p class="err">¿Eliminar este producto? Las tarjetas que lo usan conservan sus macros.</p>':'')+
    '<div class="actions"><button type="button" class="ghost" data-close>Cancelar</button>'+(st.np.id?'<button type="button" class="ghost danger" data-save="prod:del">'+(st.np.confirm?'Sí, eliminar':'Eliminar')+'</button>':'')+'<button type="button" class="primary" data-save="prod:save">Guardar</button></div>';
  },
+ tema:function(){return temaView()},
  pulso:function(st){
   return '<p class="sub">Copia el resumen del día desde DaFit.</p><div class="grid3">'+fld('reposo','Reposo',{unit:'bpm'})+fld('prom','Promedio',{unit:'bpm'})+fld('max','Máximo',{unit:'bpm'})+'</div>'+errP()+
    '<div class="actions"><button type="button" class="ghost" data-close>Cancelar</button><button type="button" class="primary" data-save="pulso:ok">Guardar</button></div>';
@@ -1224,18 +1240,21 @@ function updIngs(){
 
 function per100(pr,k){return pr.kcal>0&&pr[k]!=null?pr[k]/pr.kcal*100:null}
 function protPer100(pr){return per100(pr,'p')}
-var MNAME={p:'proteína',c:'carbohidratos',g:'grasa'};
+var MNAME={p:'proteína',c:'carbohidratos',g:'grasa',kcal:'kcal'};
+/* por 100 g o 100 ml; los productos por unidad, por 1 unidad */
+function perQty(pr,k){if(pr[k]==null||!(pr.base>0))return null;return pr.unidad==='unid'?pr[k]/pr.base:pr[k]/pr.base*100}
+function perLabel(pr){return pr.unidad==='unid'?'por unidad':'por 100 '+pr.unidad}
 function catalog(st,mode){
  var sort=st.psort||'az',list=db.prods.slice(),used={};if(!MNAME[sort])sort='az';
  if(mode==='pick')(st.ed.ings||[]).forEach(function(i){used[i.pid]=1});
- if(sort!=='az')list.sort(function(a,b){return (per100(b,sort)||0)-(per100(a,sort)||0)});else list.sort(function(a,b){return a.nombre.localeCompare(b.nombre,'es')});
+ if(sort!=='az')list.sort(function(a,b){return (perQty(b,sort)||0)-(perQty(a,sort)||0)});else list.sort(function(a,b){return a.nombre.localeCompare(b.nombre,'es')});
  var mk=sort==='az'?'p':sort;
- var rows=list.map(function(pr){var pp=per100(pr,mk);
-  return '<button type="button" class="prow pbtn" '+(mode==='pick'?'data-ingadd':'data-pedit')+'="'+esc(pr.id)+'" data-pname="'+esc(pr.nombre.toLowerCase())+'"><div style="min-width:0"><b>'+pEmo(pr)+esc(pr.nombre)+'</b>'+(used[pr.id]?' <span class="cnt">ya agregado</span>':'')+'<div class="sub mono">'+esc(prodSub(pr))+'</div>'+(pp!=null?'<div class="sub mono tb" style="opacity:.75;font-size:11px">'+esc(fmt(r1(pp)))+' g de '+MNAME[mk]+' por cada 100 kcal</div>':'')+'</div>'+icon(mode==='pick'?'plus':'pencil')+'</button>'}).join('');
+ var rows=list.map(function(pr){var pp=perQty(pr,mk);
+  return '<button type="button" class="prow pbtn" '+(mode==='pick'?'data-ingadd':'data-pedit')+'="'+esc(pr.id)+'" data-pname="'+esc(pr.nombre.toLowerCase())+'"><div style="min-width:0"><b>'+pEmo(pr)+esc(pr.nombre)+'</b>'+(used[pr.id]?' <span class="cnt">ya agregado</span>':'')+'<div class="sub mono">'+esc(prodSub(pr))+'</div>'+(pp!=null?'<div class="sub mono tb" style="opacity:.75;font-size:11px">'+esc(mk==='kcal'?fmt(Math.round(pp))+' kcal '+perLabel(pr):fmt(r1(pp))+' g de '+MNAME[mk]+' '+perLabel(pr))+'</div>':'')+'</div>'+icon(mode==='pick'?'plus':'pencil')+'</button>'}).join('');
  var chip=function(v,l){return '<button type="button" class="chip'+(sort===v?' on':'')+'" data-pick="psort" data-val="'+v+'">'+l+'</button>'};
  return '<div class="cat-top"><h3>'+(mode==='pick'?'Elige un producto':'Mis productos')+'</h3>'+
   (list.length>6?'<span class="inp"><input id="pq" type="text" placeholder="Buscar producto" autocomplete="off" aria-label="Buscar producto"></span>':'')+
-  (list.length>1?'<div class="chips">'+chip('az','A–Z')+chip('p','Proteína')+chip('c','Carbos')+chip('g','Grasas')+'</div>'+(sort!=='az'?'<span class="mini">Más '+MNAME[sort]+' primero, por cada 100 kcal</span>':''):'')+'</div>'+
+  (list.length>1?'<div class="chips">'+chip('az','A–Z')+chip('p','Proteína')+chip('c','Carbos')+chip('g','Grasas')+chip('kcal','kcal')+'</div>'+(sort!=='az'?'<span class="mini">Más '+MNAME[sort]+' primero, por 100 g o ml (o por unidad)</span>':''):'')+'</div>'+
   (list.length?'<div class="list">'+rows+'</div>':'<p class="empty">Aún no tienes productos. Crea el primero con su tabla nutrimental.</p>')+
   '<div class="cat-bot"><div class="actions"><button type="button" class="ghost" data-act="'+(mode==='pick'?'pickoff':'plistoff')+'">Volver</button><button type="button" class="primary" '+(mode==='pick'?'data-act="npnew"':'data-cardnew="prod"')+'>+ Nuevo producto</button></div></div>';
 }
@@ -1292,7 +1311,7 @@ function openSheet(kind,st,opt){
  opt=opt||{};
  SH={kind:kind,st:st||INIT[kind](),live:(kind==='comida'||kind==='suple'||kind==='molestia'),day:opt.day||'',time:opt.time||'',editId:opt.editId||null};
  if(kind==='sueno'&&!opt.editId&&SH.st.fecha==='ayer')SH.day=dayKeyOff(1);
- var TT=TYPES[kind.replace('e_','')];$('#sheetTitle').textContent=(SH.editId?'Editar · ':'')+(TT?TT.n:'Producto');
+ var TT=TYPES[kind.replace('e_','')];$('#sheetTitle').textContent=kind==='tema'?'Tema':(SH.editId?'Editar · ':'')+(TT?TT.n:'Producto');
  lockBody();$('#scrim').hidden=false;$('#sheet').hidden=false;fitSheet();
  drawSheet();$('#sheetForm').scrollTop=0;
  try{$('#sheetClose').focus({preventScroll:true})}catch(e){}
@@ -1357,7 +1376,7 @@ function openEdit(id){
 }
 function drawSheet(){
  if(!SH)return;var f=$('#sheetForm'),sc=f.scrollTop;var pqA=document.activeElement&&document.activeElement.id==='pq';
- var cs=SH.st,noDay=SH.kind==='prod'||(SH.kind==='comida'&&(cs.np||cs.plist||(cs.ed&&(cs.ed.pick||cs.ed.np))));
+ var cs=SH.st,noDay=SH.kind==='prod'||SH.kind==='tema'||(SH.kind==='comida'&&(cs.np||cs.plist||(cs.ed&&(cs.ed.pick||cs.ed.np))));
  f.innerHTML=(noDay?'':dayBar())+VIEWS[SH.kind](SH.st);
  var pqI=$('#pq');if(pqI&&SH.st.pqv){pqI.value=SH.st.pqv;var q0=SH.st.pqv.trim().toLowerCase();$$('[data-ingadd],[data-pedit]').forEach(function(b){b.hidden=!!q0&&b.dataset.pname.indexOf(q0)<0});if(pqA)try{pqI.focus({preventScroll:true})}catch(_){}}f.scrollTop=sc;
  if(SH.kind==='sueno')updateRing();
@@ -1472,7 +1491,7 @@ function doSave(name){
 }
 
 /* ---------- eventos ---------- */
-var SEL='[data-open],[data-quick],[data-tab],[data-filter],[data-hq],[data-dayview],[data-range],[data-del],[data-edit],[data-close],[data-act],[data-pick],[data-tog],[data-card],[data-cardedit],[data-cardnew],[data-save],[data-tm],[data-addg],[data-tagedit],[data-undo],[data-delm],[data-addm],[data-sm],[data-ingadd],[data-ingdel],[data-prodedit],[data-prodnew],[data-pedit]';
+var SEL='[data-open],[data-quick],[data-tab],[data-filter],[data-hq],[data-dayview],[data-range],[data-del],[data-edit],[data-close],[data-act],[data-pick],[data-tog],[data-card],[data-cardedit],[data-cardnew],[data-save],[data-tm],[data-addg],[data-tagedit],[data-undo],[data-delm],[data-addm],[data-sm],[data-ingadd],[data-ingdel],[data-prodedit],[data-prodnew],[data-pedit],[data-thm],[data-tmode],[data-tline]';
 document.addEventListener('click',function(e){
  var t=e.target.closest(SEL);
  if(!t){if(e.target.id==='scrim')closeSheet();return}
@@ -1493,6 +1512,7 @@ document.addEventListener('click',function(e){
   if(SH.kind==='molestia'&&d.pick==='tipo')st.ed=null;
   drawSheet()}
  else if(d.tog&&st){var arr=getP(st,d.tog),ix=arr.indexOf(d.val);if(ix>-1)arr.splice(ix,1);else arr.push(d.val);drawSheet()}
+ else if(d.thm||d.tmode||d.tline){var T0=db.theme;if(d.thm)T0.id=d.thm;if(d.tmode)T0.mode=d.tmode;if(d.tline)T0.line=d.tline;if(d.thm==='bosque'&&d.reset){T0.mode='auto';T0.line='tema'}persist();applyTheme();if(SH)drawSheet()}
  else if(d.sm&&st)saveMuscle(d.sm);
  else if(d.pedit&&st){var pe0=findProd(d.pedit);if(pe0){st.np=npDraft(pe0);st.err='';drawSheet();$('#sheetForm').scrollTop=0}}
  else if(d.ingadd&&st&&st.ed){st.ed.ings.push({pid:d.ingadd,cant:''});st.ed.pick=false;st.err='';drawSheet();focusIng(st.ed.ings.length-1)}
@@ -1629,6 +1649,62 @@ function sheetBack(){
  closeSheet();
 }
 
+/* ---------- temas ---------- */
+var THEMES=[
+ {id:'bosque',n:'Bosque',d:'Verde azulado. El predeterminado.',
+  L:{bg:'#EDF2F1',surface:'#F8FBFA',fg:'#10201F',muted:'#566B69',line:'#D2DEDC',accent:'#0B7A75',ink:'#FFFFFF',soft:'#DCEBE8'},
+  D:{bg:'#0E1717',surface:'#152221',fg:'#E6F0EE',muted:'#8FA7A4',line:'#263A38',accent:'#3FC1B8',ink:'#04201E',soft:'#1C3330'}},
+ {id:'oceano',n:'Océano',d:'Azul profundo, fresco y limpio.',l:['#ECF2F8','#0F1C2B','#1F6FB2','#FFFFFF'],k:['#0C1420','#E4EDF7','#5AA6EE','#04152A']},
+ {id:'atardecer',n:'Atardecer',d:'Terracota cálido sobre crema.',l:['#F8F0EA','#2A1710','#C2522A','#FFFFFF'],k:['#1A100C','#F5E8E1','#F08A5D','#2A0E04']},
+ {id:'uva',n:'Uva',d:'Morado suave, elegante.',l:['#F2F0F8','#1C1530','#6A4BC4','#FFFFFF'],k:['#120F1C','#ECE7F7','#A68CF0','#1A1030']},
+ {id:'olivo',n:'Arena y olivo',d:'Tonos tierra, estilo natural.',l:['#F3F0E6','#22220F','#5E6E1E','#FFFFFF'],k:['#14140C','#EEEDE2','#B5C75A','#1E2206']},
+ {id:'frambuesa',n:'Frambuesa',d:'Rosa intenso con energía.',l:['#F8EFF3','#2A1220','#B83A6E','#FFFFFF'],k:['#1A0D14','#F7E6EE','#F07AAE','#2A0716']},
+ {id:'grafito',n:'Grafito',d:'Blanco y negro, minimalista.',l:['#F2F2F2','#141414','#262626','#FFFFFF'],k:['#0F0F10','#EDEDED','#E8E8E8','#111111']},
+ {id:'neon',n:'Neón',d:'Índigo y verde menta. Brilla en modo oscuro.',l:['#EEF0F7','#12142A','#4B4FD8','#FFFFFF'],k:['#0A0B14','#E8EAFF','#7DF9C3','#04140D']}
+];
+var LINES=[['tema','Del tema',null],['acento','Acento',null],['marcado','Marcado',null],['dorado','Dorado','#C9A227'],['coral','Coral','#E07A5F'],['azul','Azul','#4A90D9'],['lila','Lila','#9B7FD4'],['menta','Menta','#3FBF8F']];
+function hx(c){return '#'+c.map(function(v){return ('0'+Math.max(0,Math.min(255,v)).toString(16)).slice(-2)}).join('')}
+function mixH(a,b,t){return hx(mixRGB(hexRGB(a),hexRGB(b),t))}
+function themePal(t,dark){
+ if(t.L)return dark?t.D:t.L;
+ var v=dark?t.k:t.l,bg=v[0],fg=v[1],ac=v[2],ink=v[3];
+ var surface=dark?mixH(bg,'#FFFFFF',.045):mixH(bg,'#FFFFFF',.62);
+ return {bg:bg,surface:surface,fg:fg,muted:mixH(fg,bg,.42),line:mixH(bg,fg,dark?.17:.14),accent:ac,ink:ink,soft:mixH(surface,ac,dark?.17:.12)};
+}
+function lineColor(P,dark){
+ var o=db.theme.line,sw=LINES.filter(function(x){return x[0]===o})[0];
+ if(!sw||o==='tema')return P.line;
+ if(o==='acento')return mixH(P.accent,P.surface,dark?.4:.45);
+ if(o==='marcado')return mixH(P.fg,P.bg,dark?.62:.62);
+ return mixH(sw[2],P.bg,dark?.3:.25);
+}
+function isDarkNow(){var m=db.theme.mode;return m==='dark'||(m!=='light'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)}
+function varsCSS(P,dark){var ln=lineColor(P,dark);return '--bg:'+P.bg+';--surface:'+P.surface+';--fg:'+P.fg+';--muted:'+P.muted+';--line:'+ln+';--accent:'+P.accent+';--accent-ink:'+P.ink+';--soft:'+P.soft+';--c-p:'+P.accent+';'}
+function curTheme(){return THEMES.filter(function(x){return x.id===db.theme.id})[0]||THEMES[0]}
+function applyTheme(){
+ if(!db.theme||typeof db.theme!=='object')db.theme={};db.theme=Object.assign({id:'bosque',mode:'auto',line:'tema'},db.theme);
+ var t=curTheme(),L=themePal(t,false),D=themePal(t,true);
+ var css=':root{'+varsCSS(L,false)+'}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){'+varsCSS(D,true)+'}}:root[data-theme="dark"]{'+varsCSS(D,true)+'}';
+ var el=document.getElementById('themeCSS');if(!el){el=document.createElement('style');el.id='themeCSS';document.head.appendChild(el)}el.textContent=css;
+ var r=document.documentElement;if(db.theme.mode==='light'||db.theme.mode==='dark')r.setAttribute('data-theme',db.theme.mode);else r.removeAttribute('data-theme');
+ $$('meta[name="theme-color"]').forEach(function(m,i){var dk=(db.theme.mode==='dark')||(db.theme.mode!=='light'&&i===1);m.setAttribute('content',dk?D.bg:L.bg)});
+}
+function temaView(){
+ var T=db.theme,dark=isDarkNow();
+ var modes=[['auto','Automático'],['light','Claro'],['dark','Oscuro']].map(function(m){return '<button type="button" class="'+(T.mode===m[0]?'on':'')+'" data-tmode="'+m[0]+'">'+m[1]+'</button>'}).join('');
+ var cards=THEMES.map(function(t){var P=themePal(t,dark);
+  return '<button type="button" class="th'+(T.id===t.id?' on':'')+'" data-thm="'+t.id+'" aria-pressed="'+(T.id===t.id)+'"><span class="mk" style="background:'+P.bg+'"><i style="height:22px;background:'+P.surface+';border:1px solid '+P.line+'"></i><i style="height:9px;width:70%;background:'+P.accent+'"></i><i style="height:9px;width:45%;background:'+P.soft+'"></i></span><b>'+esc(t.n)+'</b><span class="sub">'+esc(t.d)+'</span></button>'}).join('');
+ var P0=themePal(curTheme(),dark);
+ var sw=LINES.map(function(x){var c=x[0]==='tema'?P0.line:x[0]==='acento'?P0.accent:x[0]==='marcado'?P0.fg:x[2];
+  return '<button type="button" class="swb'+(T.line===x[0]?' on':'')+'" data-tline="'+x[0]+'" aria-pressed="'+(T.line===x[0])+'"><span class="c" style="background:'+c+'"></span>'+esc(x[1])+'</button>'}).join('');
+ return '<div><span class="glabel">Apariencia</span><div style="height:6px"></div><div class="seg" role="group">'+modes+'</div></div>'+
+  '<div><span class="glabel">Tema</span><div class="thg" style="margin-top:6px">'+cards+'</div></div>'+
+  '<div><span class="glabel">Color de los contornos</span><div class="sw" style="margin-top:8px">'+sw+'</div><p class="sub" style="margin-top:6px">Los bordes de tarjetas, botones y campos.</p></div>'+
+  '<button type="button" class="ghost full" data-thm="bosque" data-reset="1">Volver al tema predeterminado</button>'+
+  '<p class="sub">Los cambios se ven al momento y se guardan en este teléfono. El widget de Scriptable conserva sus colores.</p>';
+}
+if(window.matchMedia){try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){applyTheme();if(SH&&SH.kind==='tema')drawSheet()})}catch(_){}}
+
 function renderAll(){
  var n=new Date();$('#fecha').textContent=DIAS[n.getDay()]+' '+n.getDate()+' '+MESES[n.getMonth()];
  renderNav();
@@ -1636,6 +1712,7 @@ function renderAll(){
 }
 if(!db.seeded&&!db.entries.length)seed();
 persist();
+applyTheme();
 renderAll();
 showTab('hoy');
 })();
