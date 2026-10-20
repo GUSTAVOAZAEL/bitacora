@@ -386,6 +386,11 @@ select{min-height:44px;border:1px solid var(--line);background:var(--bg);color:v
 .mealrow{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0}
 .mealrow .bar{margin-top:0}
 .chipx{display:inline-flex;gap:6px;align-items:center}
+.hoyt{font:600 22px/1.1 var(--display);letter-spacing:.04em;text-transform:none;margin:-4px 0 0;color:var(--fg)}
+.recs{display:flex;flex-direction:column}
+.recs>div{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.recs>div:first-child{border-top:0}
+.recs .emo{font-size:24px;line-height:1.2}
 .ints{position:relative;padding:14px 4px 4px}
 .ints input{-webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:6px;background:linear-gradient(90deg,#2E9E5B,#E8C547 50%,#D64545);outline:none;margin:0;position:relative;z-index:1}
 .ints input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;border-radius:50%;background:var(--surface);border:3px solid var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.25)}
@@ -454,6 +459,8 @@ function persist(){mem=db;try{localStorage.setItem(KEY,JSON.stringify(db))}catch
 var pad=function(n){return String(n).padStart(2,'0')};
 var dk=function(d){d=new Date(d);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
 var today=function(){return dk(Date.now())};
+var DIASL=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+var MESESL=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 var DIAS=['dom','lun','mar','mié','jue','vie','sáb'];
 var MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 function parseKey(k){var p=k.split('-').map(Number);return new Date(p[0],p[1]-1,p[2])}
@@ -724,10 +731,10 @@ function renderHoy(){
  var tiles=ORDEN.map(function(k){return '<button class="tile" type="button" data-open="'+k+'">'+icon(TYPES[k].i)+TYPES[k].s+'</button>'}).join('');
  var recent=sorted().filter(function(e){return dk(e.ts)===today()}).slice(0,6);
  var remMl=Math.round(G.ml-t.ml);
- $('#hoy').innerHTML=banners+
- '<section class="card stack" aria-label="Resumen de hoy" style="gap:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3>Hoy</h3><button type="button" class="wbtn" data-act="widget" aria-label="Actualizar widget"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button></div>'+dayPanel(t,false,true)+statusRow()+'</section>'+
- '<section class="card" aria-label="Registros de hoy"><h3>Registros de hoy</h3><div class="list" style="margin-top:6px">'+
-  (recent.length?recent.map(function(e){return entryRow(e,true)}).join(''):'<p class="empty">Aún no registras nada hoy. Toca un botón de arriba.</p>')+'</div></section>';
+ var nd=new Date(),fecha='Hoy · '+DIASL[nd.getDay()]+' '+nd.getDate()+' de '+MESESL[nd.getMonth()];
+ $('#hoy').innerHTML='<h2 class="hoyt">'+fecha+'</h2>'+banners+
+ '<section class="card stack" aria-label="Resumen de hoy" style="gap:14px">'+dayPanel(t,false,true)+statusRow()+'</section>'+
+ (hrDayCard(today())||'<section class="card stack" style="gap:10px"><h3>Pulso del día</h3><p class="sub">Aún no hay lecturas de DaFit para hoy.</p><label class="ghost" for="dafitHoy" style="display:flex;align-items:center;justify-content:center;cursor:pointer">Actualizar desde DaFit</label><input id="dafitHoy" data-dafit="1" class="sr" type="file" multiple></section>');
 }
 
 /* ---------- Historial ---------- */
@@ -913,7 +920,7 @@ function renderDatos(){
    '<label class="fld"><span>O pega aquí un JSON para restaurar</span><textarea id="impTxt" placeholder="{ ... }"></textarea></label>'+
    '<button class="ghost" type="button" data-act="import">Importar y combinar</button>'+
   '</div></details></div></details>'+
- '<details class="dsec" id="ds_widget"'+(dOpen.widget?' open':'')+'><summary><h2>Widget</h2><span class="chev" aria-hidden="true"></span></summary><div class="stack"><p class="sub">Usa la app Scriptable (gratis). 1) En Scriptable toca +, pega el script y ponle de nombre <b>Bitacora</b>, sin acento. 2) En tu pantalla de inicio agrega un widget de Scriptable, tamaño grande, y en Script elige Bitacora. 3) Cada vez que quieras ponerlo al día, toca la flechita ↻ en Hoy.</p>'+
+ '<details class="dsec" id="ds_widget"'+(dOpen.widget?' open':'')+'><summary><h2>Widget</h2><span class="chev" aria-hidden="true"></span></summary><div class="stack"><p class="sub">Usa la app Scriptable (gratis). 1) En Scriptable toca +, pega el script y ponle de nombre <b>Bitacora</b>, sin acento. 2) En tu pantalla de inicio agrega un widget de Scriptable, tamaño grande, y en Script elige Bitacora. 3) Cada vez que quieras ponerlo al día, toca <b>↻ Actualizar widget</b> al final de Datos.</p>'+
   '<div class="actions"><button class="primary" type="button" data-act="copyscript">Copiar script</button><button class="ghost" type="button" data-act="widget">Probar ↻ Widget</button></div>'+
   '<textarea id="wsTxt" readonly aria-label="Script de Scriptable" style="min-height:90px">'+esc(WSCRIPT)+'</textarea></div></details>'+
  '<details class="dsec" id="ds_prods"'+(dOpen.prods?' open':'')+'><summary><h2>Productos</h2><span class="chev" aria-hidden="true"></span></summary><div class="stack"><p class="sub">Tus tablas nutrimentales. Al crear una comida eliges el producto, escribes los gramos y se calculan los macros.</p>'+
@@ -921,6 +928,15 @@ function renderDatos(){
   '<button type="button" class="ghost" data-prodnew>+ Nuevo producto</button></div></details>'+
  '<details class="dsec" id="ds_musc"'+(dOpen.musc?' open':'')+'><summary><h2>Músculos del gym</h2><span class="chev" aria-hidden="true"></span></summary><div class="stack">'+grp+'</div></details>'+
  (ex||db.lib.some(function(i){return i.ex})?'<details class="dsec" id="ds_ej"'+(dOpen.ej?' open':'')+'><summary><h2>Ejemplos</h2><span class="chev" aria-hidden="true"></span></summary><div class="stack"><button class="ghost" type="button" data-act="clearex">Borrar datos de ejemplo</button></div></details>':'')+
+ '<details class="dsec" id="ds_rec"'+(dOpen.rec?' open':'')+'><summary><h2>Recursos</h2><span class="chev" aria-hidden="true"></span></summary><div class="stack">'+
+  '<p class="sub">Para que todo funcione, la Bitácora se apoya en estas apps del iPhone:</p><div class="recs">'+
+  '<div><span class="emo">📜</span><div><b>Scriptable</b><p class="sub">Gratis en el App Store. Muestra tu resumen del día en un widget grande de la pantalla de inicio (sección Widget).</p></div></div>'+
+  '<div><span class="emo">⌚</span><div><b>DaFit</b><p class="sub">La app de tu pulsera. Guarda cada día un archivo <b>app_AAAA-MM-DD.log</b> con tus lecturas de pulso; la Bitácora lo lee con Actualizar desde DaFit.</p></div></div>'+
+  '<div><span class="emo">🗂️</span><div><b>Archivos</b><p class="sub">Viene con el iPhone. Ahí eliges el archivo de DaFit y guardas tus respaldos.</p></div></div>'+
+  '<div><span class="emo">🧭</span><div><b>Safari</b><p class="sub">Para instalar la Bitácora en la pantalla de inicio: Compartir → Agregar a inicio. No borres ese icono: tus datos viven en él.</p></div></div>'+
+  '</div><p class="sub">La Bitácora funciona sin internet y tus datos se quedan solo en este teléfono; por eso conviene descargar respaldos de vez en cuando.</p></div></details>'+
+ '<section class="card stack"><h2>Actualizar</h2><label class="primary full" for="dafitDatos" style="display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer">Actualizar desde DaFit</label><button class="ghost full" type="button" data-act="widget">↻ Actualizar widget</button><input id="dafitDatos" data-dafit="1" class="sr" type="file" multiple>'+
+  '<p class="sub">'+(db.hr&&Object.keys(db.hr).length?'Pulso: '+Object.keys(db.hr).length+' días guardados'+(db.hrLast?' · última actualización '+esc(dayName(dk(db.hrLast)).toLowerCase())+' '+hhmm(db.hrLast):''):'Aún no has cargado datos de DaFit.')+'</p></section>'+
  '<p class="sub mono" id="verTxt" style="text-align:center">Versión: …</p>';
  showVersion();
 }
@@ -1260,7 +1276,7 @@ var VIEWS={
   return (sm?hrDayCard(vday()):'')+'<div class="pbox"><b>Desde DaFit</b>'+
    (sm?'<p class="sub mono">'+esc(dayName(vday()))+': prom '+sm.prom+' · máx '+sm.max+' · reposo aprox. '+sm.reposo+' bpm ('+sm.n+' lecturas)</p>':'')+
    '<p class="sub" style="font-size:13px">'+(nd?nd+(nd===1?' día guardado':' días guardados')+(db.hrLast?' · última actualización '+esc(dayName(dk(db.hrLast)).toLowerCase())+' '+hhmm(db.hrLast):''):'Aún no has cargado datos de DaFit.')+'</p>'+
-   '<label class="primary" for="dafitIn" style="display:flex;align-items:center;justify-content:center;cursor:pointer">Actualizar desde DaFit</label><input id="dafitIn" class="sr" type="file" multiple>'+
+   '<label class="primary" for="dafitIn" style="display:flex;align-items:center;justify-content:center;cursor:pointer">Actualizar desde DaFit</label><input id="dafitIn" data-dafit="1" class="sr" type="file" multiple>'+
    '<p class="sub" style="font-size:13px">Elige el archivo <b>app_'+esc(today())+'.log</b> para lo de hoy. Puedes elegir varios días a la vez para cargar tu historial; no se duplica nada.</p></div>'+
    '<span class="glabel">O escríbelo a mano</span><div class="grid3">'+fld('reposo','Reposo',{unit:'bpm'})+fld('prom','Promedio',{unit:'bpm'})+fld('max','Máximo',{unit:'bpm'})+'</div>'+errP()+
    '<div class="actions"><button type="button" class="ghost" data-close>Cancelar</button><button type="button" class="primary" data-save="pulso:ok">Guardar</button></div>';
@@ -1742,7 +1758,7 @@ document.addEventListener('change',function(e){
  if(gm[t.id]){var v=+t.value;if(v>0){db.goals[gm[t.id]]=v;persist();renderHoy()}return}
  if(t.id==='s_vaso'){var vv=+t.value;if(vv>0){db.vasoMl=vv;persist();renderHoy()}return}
  if(t.id==='loadFile'&&t.files&&t.files[0]){var lf=new FileReader();lf.onload=function(){importText(String(lf.result||'').trim());t.value=''};lf.onerror=function(){toast('No pude leer ese archivo.')};lf.readAsText(t.files[0]);return}
- if(t.id==='dafitIn'&&t.files&&t.files.length){var fs0=[].slice.call(t.files);t.value='';importDafit(fs0);return}
+ if(t.dataset&&t.dataset.dafit&&t.files&&t.files.length){var fs0=[].slice.call(t.files);t.value='';importDafit(fs0);return}
  if(t.id==='impFile'&&t.files&&t.files[0]){var fr=new FileReader();fr.onload=function(){$('#impTxt').value=String(fr.result||'')};fr.readAsText(t.files[0]);return}
  if(t.id==='photoIn'&&t.files&&t.files[0]&&SH&&SH.st.ed){
   var rd=new FileReader();rd.onload=function(){var im=new Image();im.onload=function(){
@@ -1829,7 +1845,7 @@ function importDafit(files){
  Promise.all([].slice.call(files).map(readText)).then(function(texts){
   var all={};texts.forEach(function(t){var d=parseDafit(t);Object.keys(d).forEach(function(k){var A=all[k]||(all[k]={live:{},full:{}});Object.assign(A.full,d[k].full);Object.assign(A.live,d[k].live)})});
   if(!Object.keys(all).length){toast('No encontré lecturas de pulso en '+(files.length>1?'esos archivos':'ese archivo')+'.');return}
-  var r=hrMerge(all);db.hrLast=new Date().toISOString();persist();renderAll();if(SH&&SH.kind==='pulso')drawSheet();
+  var r=hrMerge(all);db.hrLast=new Date().toISOString();persist();renderAll();if(tab==='datos')renderDatos();if(SH&&SH.kind==='pulso')drawSheet();
   toast('DaFit: '+r.dias.length+(r.dias.length===1?' día':' días')+' ('+r.dias.map(function(d){return dayName(d).toLowerCase()}).join(', ')+') · '+r.nuevas+' lecturas nuevas');
  }).catch(function(){toast('No pude leer el archivo.')});
 }
