@@ -296,16 +296,21 @@ input[type=number]{-moz-appearance:textfield}
 #sheetClose svg{width:24px;height:24px}
 .cat-top{position:sticky;top:0;z-index:2;background:var(--surface);display:flex;flex-direction:column;gap:10px;padding-bottom:8px;box-shadow:0 1px 0 var(--line)}
 .cat-bot{position:sticky;bottom:-4px;z-index:2;background:var(--surface);padding:10px 0 4px;box-shadow:0 -1px 0 var(--line)}
-.cat-top .chips{flex-wrap:nowrap;overflow-x:auto;flex:none}
+.cat-top .chips{flex-wrap:wrap;flex:none}
 .cat-top .inp:focus-within{outline-offset:-3px}
 .cat-top .chip{flex:0 0 auto}
 details.recd{padding:0 12px 12px}
 details.recd:not([open]){padding-bottom:0}
-.filrow{display:flex;flex:none;gap:5px;overflow-x:auto;scrollbar-width:none;margin:0 -2px;padding:2px}
-.filrow::-webkit-scrollbar{display:none}
-.filrow .chip{flex:1 0 auto;min-height:40px;padding:0 8px;font-size:min(15px,3.7vw)}
+.filrow{display:flex;flex:none;flex-wrap:wrap;gap:4px}
+.filrow .chip{flex:1 1 auto;min-height:40px;padding:0 4px;font-size:min(14px,3.3vw);letter-spacing:0}
+details.fild{padding:0 12px 12px}
+details.fild:not([open]){padding-bottom:0}
+details.fild summary{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);gap:6px}
+details.fild summary b{color:var(--accent);font-weight:600}
+.fild .stack{gap:10px}
+.ci .sv2{font:600 12px var(--mono);color:var(--accent)}
 details.recd summary{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-#sheetForm{display:flex;flex-direction:column;gap:14px;overflow:auto;min-height:0;padding-bottom:4px;overscroll-behavior:contain}
+#sheetForm{display:flex;flex-direction:column;gap:14px;overflow-x:hidden;overflow-y:auto;touch-action:pan-y;min-height:0;padding-bottom:4px;overscroll-behavior:contain}
 @media (prefers-reduced-motion:no-preference){#sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}}
 
 #toast{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));top:calc(10px + env(safe-area-inset-top,0px));z-index:30;max-width:520px;margin:0 auto;background:var(--fg);color:var(--bg);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:500}
@@ -886,9 +891,9 @@ function cardEmojis(it){var out=[];if(it&&it.ings)it.ings.forEach(function(i){va
 function emoStack(es){var n=Math.min(es.length,4);return '<span class="emos n'+n+'">'+es.slice(0,4).map(function(e){return '<span class="emo">'+esc(e)+'</span>'}).join('')+(es.length>4?'<span class="more">+'+(es.length-4)+'</span>':'')+'</span>'}
 function mediaHTML(it){var es=cardEmojis(it);if(es.length)return emoStack(es);return safePhoto(it.photo)?'<img alt="" src="'+it.photo+'">':'<span class="emo">'+esc(it.emoji||'🍽️')+'</span>'}
 function pEmo(pr){return pr&&pr.emoji?'<span class="pe">'+esc(pr.emoji)+'</span>':''}
-function cardHTML(kind,it,sub,cnt,rid){
+function cardHTML(kind,it,sub,cnt,rid,extra){
  var attr=rid!=null?'data-rid="'+rid+'"':'data-id="'+esc(it.id)+'"';
- return '<div class="ci"><button type="button" class="ci-main" data-card="'+kind+'" '+attr+'><span class="ci-media">'+mediaHTML(it)+'</span><b>'+esc(it.nombre)+'</b>'+(sub?'<span class="sub mono ings">'+esc(sub)+'</span>':'')+(cnt?'<span class="cnt">hoy ×'+cnt+'</span>':'')+'</button>'+
+ return '<div class="ci"><button type="button" class="ci-main" data-card="'+kind+'" '+attr+'><span class="ci-media">'+mediaHTML(it)+'</span><b>'+esc(it.nombre)+'</b>'+(sub?'<span class="sub mono ings">'+esc(sub)+'</span>':'')+(extra?'<span class="sv2">'+esc(extra)+'</span>':'')+(cnt?'<span class="cnt">hoy ×'+cnt+'</span>':'')+'</button>'+
   '<button type="button" class="ci-edit" data-cardedit="'+kind+'" '+attr+' aria-label="Editar '+esc(it.nombre)+'">'+icon('pencil')+'</button></div>';
 }
 function newCard(kind,label){return '<div class="ci add"><button type="button" class="ci-main" data-cardnew="'+kind+'">'+icon('plus')+label+'</button></div>'}
@@ -1051,14 +1056,22 @@ var VIEWS={
   var fil=st.fil||'Todas',all=fil==='Todas';
   var rec=recentComidas(all?null:fil);SH.recents=rec;
   var items=db.lib.filter(function(i){return all||(i.momentos||[]).indexOf(fil)>-1});
+  var cs=st.csort||'',CS={p:['Proteína','P ','g'],c:['Carbos','C ','g'],g:['Grasas','G ','g'],kcal:['kcal','','kcal']};if(!CS[cs])cs='';
+  if(cs)items.sort(function(a,b){return (numv(b[cs])||0)-(numv(a[cs])||0)});
+  var xtra=function(i){if(!cs)return '';var v=numv(i[cs]);return v==null?'':CS[cs][1]+fmt(cs==='kcal'?Math.round(v):r1(v))+' '+CS[cs][2]};
+  var fsum=fil+(cs?' · más '+CS[cs][0].toLowerCase():'');
   var cnt=function(id){return dayEntries(vday()).filter(function(e){return e.type==='comida'&&e.lib===id&&(all||e.momento===fil)}).length};
   var sub=function(i){return useIngs(i)?ingsText(i.ings,1):fmt(i.kcal)+' kcal · P '+fmt(i.p||0)+' g'};
   if(st.prev)return comidaPreview(st);
   return '<div class="mini">'+(vday()===today()?'Hoy':dayName(vday()))+': '+fmt(t.kcal)+' / '+fmt(G.kcal)+' kcal · P '+fmt(t.p)+' / '+fmt(G.p)+' g</div>'+
-   '<div class="filrow" role="group" aria-label="Filtrar tarjetas">'+['Todas'].concat(MOMENTOS).map(function(m){return '<button type="button" class="chip'+(m===fil?' on':'')+'" data-pick="fil" data-val="'+m+'">'+m+'</button>'}).join('')+'</div>'+
+   '<details class="fild" id="filDet"'+(st.filOpen?' open':'')+'><summary>Filtros · <b>'+esc(fsum)+'</b></summary><div class="stack">'+
+    '<div class="filrow" role="group" aria-label="Filtrar por comida">'+['Todas'].concat(MOMENTOS).map(function(m){return '<button type="button" class="chip'+(m===fil?' on':'')+'" data-pick="fil" data-val="'+m+'">'+m+'</button>'}).join('')+'</div>'+
+    '<span class="mini">Ordenar por mayor cantidad</span>'+
+    '<div class="filrow" role="group" aria-label="Ordenar por macro">'+['p','c','g','kcal'].map(function(k){return '<button type="button" class="chip'+(k===cs?' on':'')+'" data-pick="csort" data-val="'+k+'">'+CS[k][0]+'</button>'}).join('')+'</div>'+
+   '</div></details>'+
    '<p class="sub">Toca una tarjeta para ver qué contiene y registrarla.</p>'+
    (rec.length?'<details class="recd" id="recDet"'+(st.recOpen?' open':'')+'><summary>Recientes ('+rec.length+')</summary><div class="cgrid">'+rec.map(function(i,n){return cardHTML('comida',i,sub(i),null,n)}).join('')+'</div></details>':'')+
-   '<div><span class="glabel">Mis tarjetas'+(all?'':' · '+fil)+'</span><div class="cgrid" style="margin-top:6px">'+items.map(function(i){return cardHTML('comida',i,sub(i),cnt(i.id))}).join('')+'</div>'+(items.length?'':'<p class="sub">'+(all?'Aún no tienes tarjetas.':'Aún no tienes tarjetas para '+esc(fil.toLowerCase())+'.')+'</p>')+
+   '<div><span class="glabel">Mis tarjetas'+(all?'':' · '+fil)+(cs?' · más '+CS[cs][0].toLowerCase()+' primero':'')+'</span><div class="cgrid" style="margin-top:6px">'+items.map(function(i){return cardHTML('comida',i,sub(i),cnt(i.id),null,xtra(i))}).join('')+'</div>'+(items.length?'':'<p class="sub">'+(all?'Aún no tienes tarjetas.':'Aún no tienes tarjetas para '+esc(fil.toLowerCase())+'.')+'</p>')+
    '<div class="cgrid" style="margin-top:10px">'+newCard('prod','Nuevo producto')+newCard('comida','Nueva comida')+'</div>'+
    '<button type="button" class="ghost full" data-act="pliston" style="margin-top:10px">Mis productos ('+db.prods.length+')</button></div>'+
    closeRow('Listo');
@@ -1474,7 +1487,7 @@ document.addEventListener('click',function(e){
  else if(d.range!=null){range=d.range==='c'?'c':+d.range;renderCharts()}
  else if('close' in d)closeSheet();
  else if(d.pick&&st){
-  var v=d.n?+d.val:d.val;setP(st,d.pick,v);st.err='';
+  var v=d.n?+d.val:d.val;if(d.pick==='csort'&&st.csort===v)v='';setP(st,d.pick,v);st.err='';
   if(SH.kind==='gym'&&d.pick==='rutina'){gymFor(st,v);gymMerge(st)}
   if(/(^|\.)np\.unidad$/.test(d.pick)){var npo=getP(st,d.pick.replace(/\.unidad$/,''));if(v==='unid'&&+npo.base===100)npo.base=1;else if(v!=='unid'&&+npo.base===1)npo.base=100}
   if(SH.kind==='molestia'&&d.pick==='tipo')st.ed=null;
@@ -1594,7 +1607,7 @@ document.addEventListener('pointermove',function(e){
 });
 function endDrag(){if(SH&&SH.kind==='sueno')SH.st.drag=null}
 document.addEventListener('pointerup',endDrag);document.addEventListener('pointercancel',endDrag);
-document.addEventListener('toggle',function(e){if(e.target&&e.target.id==='recDet'&&SH)SH.st.recOpen=e.target.open},true);
+document.addEventListener('toggle',function(e){if(!SH||!e.target)return;if(e.target.id==='recDet')SH.st.recOpen=e.target.open;if(e.target.id==='filDet')SH.st.filOpen=e.target.open},true);
 document.addEventListener('keydown',function(e){
  if(e.key==='Escape'&&SH){closeSheet();return}
  var t=e.target;if((e.key==='Enter'||e.key===' ')&&t&&t.getAttribute&&t.getAttribute('role')==='button'&&t.dataset.open){e.preventDefault();openSheet(t.dataset.open)}
