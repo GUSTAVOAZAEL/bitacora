@@ -578,7 +578,7 @@ function describe(e){
   case 'suple':return {t:e.item,s:e.momento};
   case 'animo':return {t:(ANIMO[e.nivel-1]||{l:'Ánimo'}).l,s:(e.tags||[]).concat(e.nota?[e.nota]:[]).join(' · ')};
   case 'molestia':return {t:e.tipo+': '+(e.nombre||e.zona||''),s:'Intensidad '+e.int+'/5 · '+(INT[e.int]||'')};
-  case 'pulso':{var q=[];if(e.reposo!=null)q.push('Reposo '+fmt(e.reposo));if(e.prom!=null)q.push('Prom '+fmt(e.prom));if(e.max!=null)q.push('Máx '+fmt(e.max));return {t:q.join(' · ')+' bpm'}}
+  case 'pulso':{var q=[];if(e.reposo!=null)q.push('Reposo '+fmt(e.reposo));if(e.prom!=null)q.push('Prom '+fmt(e.prom));if(e.max!=null)q.push('Máx '+fmt(e.max));return {t:q.join(' · ')+' bpm',s:e.src==='dafit'?'De DaFit · '+fmt(e.n||0)+' lecturas':''}}
  }
  return {t:e.type};
 }
@@ -850,12 +850,12 @@ function renderChartsHoy(head,k){
    '<div><span class="k">Gym</span><span class="v">'+(gy?esc(gy.rutina):'—')+'</span><span class="sub">'+(gy&&gy.animoGym?GYMOOD[gy.animoGym-1].l:'sin registro')+'</span>'+(gy&&((gy.tags&&gy.tags.length)||gy.nota)?'<span class=\"sub\" style=\"display:block\">'+esc((gy.tags||[]).concat(gy.nota?['“'+gy.nota+'”']:[]).join(' · '))+'</span>':'')+'</div>'+
    '<div><span class="k">Suplementos</span><span class="sub" style="color:var(--fg);font-size:16px">'+(sup.length?esc(sup.join(', ')):'ninguno')+'</span></div>'+
    '<div><span class="k">Pulso</span><span class="v">'+(pu&&pu.prom!=null?fmt(pu.prom):'—')+'<small>bpm prom</small></span></div>'+
-  '</div></section>'+dayList(k);
+  '</div></section>'+hrDayCard(k)+dayList(k);
 }
 
 /* ---------- Datos ---------- */
 function exportJSON(){return JSON.stringify({app:'bitacora-salud',v:2,exportado:new Date().toISOString(),
- ajustes:{vasoMl:db.vasoMl,goals:db.goals,lib:db.lib.filter(function(i){return !i.ex}),prods:db.prods,suples:db.suples,molest:db.molest,tags:db.tags,gtags:db.gtags,grupos:db.grupos,eps:db.eps,theme:db.theme},
+ ajustes:{vasoMl:db.vasoMl,goals:db.goals,lib:db.lib.filter(function(i){return !i.ex}),prods:db.prods,suples:db.suples,molest:db.molest,tags:db.tags,gtags:db.gtags,grupos:db.grupos,eps:db.eps,theme:db.theme,hr:db.hr||{},hrLast:db.hrLast||null},
  registros:db.entries.filter(function(e){return !e.ex})},null,1)}
 function showVersion(){var el=$('#verTxt');if(!el)return;if(!window.caches){el.textContent='Versión: sin service worker';return}
  caches.keys().then(function(ks){var v=ks.filter(function(k){return k.indexOf('bitacora-')===0}).sort().pop();var e2=$('#verTxt');if(e2)e2.textContent='Versión instalada: '+(v?v.replace('bitacora-',''):'sin instalar')}).catch(function(){})}
@@ -952,6 +952,7 @@ function importText(raw){
   if(Array.isArray(a.tags))a.tags.forEach(function(t){if(typeof t==='string'&&db.tags.indexOf(t)<0)db.tags.push(t)});
   if(a.grupos&&typeof a.grupos==='object')Object.keys(a.grupos).forEach(function(g){if(!Array.isArray(a.grupos[g]))return;if(!db.grupos[g])db.grupos[g]=[];a.grupos[g].forEach(function(m){if(typeof m==='string'&&db.grupos[g].indexOf(m)<0)db.grupos[g].push(m)})});
  }
+ if(a&&a.hr&&typeof a.hr==='object'){if(!db.hr)db.hr={};Object.keys(a.hr).forEach(function(d){if(typeof a.hr[d]!=='string')return;var inc=a.hr[d].split(',').map(Number),cur=hrArr(d)||new Array(HRS).fill(0);for(var i=0;i<HRS;i++)if(inc[i]>0)cur[i]=inc[i];db.hr[d]=cur.join(',')});if(a.hrLast&&(!db.hrLast||a.hrLast>db.hrLast))db.hrLast=a.hrLast}
  if(a&&a.theme&&typeof a.theme==='object'&&typeof applyTheme==='function'){db.theme=Object.assign({},db.theme,a.theme);applyTheme()}
  persist();renderAll();renderDatos();toast('Listo: '+n+' registros, '+cP+' productos y '+cL+' tarjetas nuevas.');
 }
@@ -1232,7 +1233,13 @@ var VIEWS={
  },
  tema:function(){return temaView()},
  pulso:function(st){
-  return '<p class="sub">Copia el resumen del día desde DaFit.</p><div class="grid3">'+fld('reposo','Reposo',{unit:'bpm'})+fld('prom','Promedio',{unit:'bpm'})+fld('max','Máximo',{unit:'bpm'})+'</div>'+errP()+
+  var nd=db.hr?Object.keys(db.hr).length:0,hs=hrArr(vday()),sm=hs&&hrSum(hs);
+  return '<div class="pbox"><b>Desde DaFit</b>'+
+   (sm?'<p class="sub mono">'+esc(dayName(vday()))+': prom '+sm.prom+' · máx '+sm.max+' · reposo aprox. '+sm.reposo+' bpm ('+sm.n+' lecturas)</p>':'')+
+   '<p class="sub" style="font-size:13px">'+(nd?nd+(nd===1?' día guardado':' días guardados')+(db.hrLast?' · última actualización '+esc(dayName(dk(db.hrLast)).toLowerCase())+' '+hhmm(db.hrLast):''):'Aún no has cargado datos de DaFit.')+'</p>'+
+   '<label class="primary" for="dafitIn" style="display:flex;align-items:center;justify-content:center;cursor:pointer">Actualizar desde DaFit</label><input id="dafitIn" class="sr" type="file" multiple>'+
+   '<p class="sub" style="font-size:13px">Elige el archivo <b>app_'+esc(today())+'.log</b> para lo de hoy. Puedes elegir varios días a la vez para cargar tu historial; no se duplica nada.</p></div>'+
+   '<span class="glabel">O escríbelo a mano</span><div class="grid3">'+fld('reposo','Reposo',{unit:'bpm'})+fld('prom','Promedio',{unit:'bpm'})+fld('max','Máximo',{unit:'bpm'})+'</div>'+errP()+
    '<div class="actions"><button type="button" class="ghost" data-close>Cancelar</button><button type="button" class="primary" data-save="pulso:ok">Guardar</button></div>';
  }
 };
@@ -1711,6 +1718,7 @@ document.addEventListener('change',function(e){
  if(gm[t.id]){var v=+t.value;if(v>0){db.goals[gm[t.id]]=v;persist();renderHoy()}return}
  if(t.id==='s_vaso'){var vv=+t.value;if(vv>0){db.vasoMl=vv;persist();renderHoy()}return}
  if(t.id==='loadFile'&&t.files&&t.files[0]){var lf=new FileReader();lf.onload=function(){importText(String(lf.result||'').trim());t.value=''};lf.onerror=function(){toast('No pude leer ese archivo.')};lf.readAsText(t.files[0]);return}
+ if(t.id==='dafitIn'&&t.files&&t.files.length){var fs0=[].slice.call(t.files);t.value='';importDafit(fs0);return}
  if(t.id==='impFile'&&t.files&&t.files[0]){var fr=new FileReader();fr.onload=function(){$('#impTxt').value=String(fr.result||'')};fr.readAsText(t.files[0]);return}
  if(t.id==='photoIn'&&t.files&&t.files[0]&&SH&&SH.st.ed){
   var rd=new FileReader();rd.onload=function(){var im=new Image();im.onload=function(){
@@ -1753,6 +1761,65 @@ function sheetBack(){
  if((k==='suple'||k==='molestia')&&st.ed){st.ed=null;return re()}
  if(k==='gym'&&st.addG){st.addG=null;return re()}
  closeSheet();
+}
+
+/* ---------- DaFit: pulso desde el registro de la app (app_AAAA-MM-DD.log) ---------- */
+var HRS=288;
+function hrArr(d){var s0=db.hr&&db.hr[d];if(!s0)return null;var a=s0.split(',').map(Number);while(a.length<HRS)a.push(0);return a}
+function hrMedian(a){a=a.slice().sort(function(x,y){return x-y});return a[Math.floor(a.length/2)]}
+function parseDafit(text){
+ var days={};
+ function put(d,slot,v,live){if(!(v>=30&&v<=230)||slot<0||slot>=HRS)return;var D=days[d]||(days[d]={live:{},full:{}});(live?D.live:D.full)[slot]=v}
+ /* 1) lecturas en vivo (Bluetooth 2A37): una ráfaga cada 5 minutos, se toma la mediana */
+ var re=/^(\d{4}-\d{2}-\d{2}) (\d{2}):(\d{2}):\d{2}\.\d+[^\n]*?nsdata= Optional\("([0-9a-fA-F]{2}) ([0-9a-fA-F]{2})(?: ([0-9a-fA-F]{2}))?[^"\n]*"\),characteristic =2A37/gm,m,b={};
+ while((m=re.exec(text))){var fl=parseInt(m[4],16),v=(fl&1)?parseInt(m[5],16)+(parseInt(m[6]||'0',16)<<8):parseInt(m[5],16);var k=m[1]+'|'+(+m[2]*60+(+m[3]));(b[k]=b[k]||[]).push(v)}
+ Object.keys(b).forEach(function(k){var q=k.split('|'),vs=b[k].filter(function(v){return v>0});if(vs.length)put(q[0],Math.floor(+q[1]/5),hrMedian(vs),true)});
+ /* 2) la curva del día que DaFit guarda al abrir su pantalla de ritmo cardiaco (288 valores) */
+ var re2=/selectedHeart = \["date": "(\d{4}-\d{2}-\d{2})"[^\n]*?"detail": <[^>\n]*>\(\s*([\d,\s]*?)\s*\)/g;
+ while((m=re2.exec(text))){var nums=m[2].split(/[,\s]+/).filter(Boolean).map(Number);if(nums.length<200)continue;var dd=m[1];nums.forEach(function(v,i){if(v>0)put(dd,i,v,false)})}
+ return days;
+}
+function hrSum(a){
+ var vs=a.filter(function(v){return v>0});if(!vs.length)return null;var so=vs.slice().sort(function(x,y){return x-y}),last=0;a.forEach(function(v,i){if(v>0)last=i});
+ return {n:vs.length,prom:Math.round(vs.reduce(function(x,y){return x+y},0)/vs.length),max:so[so.length-1],min:so[0],reposo:so[Math.floor((so.length-1)*.1)],last:last};
+}
+function hrUpsertEntry(d){
+ var a=hrArr(d),sm=a&&hrSum(a);if(!sm)return;
+ var dt=parseKey(d);dt.setHours(Math.floor(sm.last*5/60),(sm.last*5)%60,0,0);
+ var e={id:'hr_'+d,type:'pulso',src:'dafit',reposo:sm.reposo,prom:sm.prom,max:sm.max,min:sm.min,n:sm.n,ts:dt.toISOString()};
+ var ix=-1;db.entries.forEach(function(x,i){if(x.id===e.id)ix=i});if(ix>-1)db.entries[ix]=e;else db.entries.push(e);
+}
+function hrMerge(days){
+ if(!db.hr||typeof db.hr!=='object')db.hr={};var res={dias:[],nuevas:0};
+ Object.keys(days).sort().forEach(function(d){
+  var a=hrArr(d)||new Array(HRS).fill(0),D=days[d],before=a.filter(function(v){return v>0}).length;
+  for(var i=0;i<HRS;i++){var v=D.live[i]!=null?D.live[i]:D.full[i]!=null?D.full[i]:null;if(v!=null)a[i]=v}
+  var after=a.filter(function(v){return v>0}).length;if(!after)return;
+  db.hr[d]=a.join(',');hrUpsertEntry(d);res.dias.push(d);res.nuevas+=Math.max(0,after-before);
+ });
+ return res;
+}
+function readText(f){return new Promise(function(ok,ko){var r=new FileReader();r.onload=function(){ok(String(r.result||''))};r.onerror=ko;r.readAsText(f)})}
+function importDafit(files){
+ toast('Leyendo '+(files.length>1?files.length+' archivos':'archivo')+'…');
+ Promise.all([].slice.call(files).map(readText)).then(function(texts){
+  var all={};texts.forEach(function(t){var d=parseDafit(t);Object.keys(d).forEach(function(k){var A=all[k]||(all[k]={live:{},full:{}});Object.assign(A.full,d[k].full);Object.assign(A.live,d[k].live)})});
+  if(!Object.keys(all).length){toast('No encontré lecturas de pulso en '+(files.length>1?'esos archivos':'ese archivo')+'.');return}
+  var r=hrMerge(all);db.hrLast=new Date().toISOString();persist();renderAll();if(SH&&SH.kind==='pulso')drawSheet();
+  toast('DaFit: '+r.dias.length+(r.dias.length===1?' día':' días')+' ('+r.dias.map(function(d){return dayName(d).toLowerCase()}).join(', ')+') · '+r.nuevas+' lecturas nuevas');
+ }).catch(function(){toast('No pude leer el archivo.')});
+}
+function hrDayCard(k){
+ var a=hrArr(k),sm=a&&hrSum(a);if(!sm)return '';
+ var W2=340,H2=170,L=34,R=8,T=10,B=22,ax=axis(sm.min-6,sm.max+6);
+ var X=function(i){return +(L+(W2-L-R)*i/(HRS-1)).toFixed(2)},Y=function(v){return +(T+(H2-T-B)*(1-(v-ax.lo)/(ax.hi-ax.lo))).toFixed(2)};
+ var g='';ax.ticks.forEach(function(t){g+='<line class="gl" x1="'+L+'" x2="'+(W2-R)+'" y1="'+Y(t)+'" y2="'+Y(t)+'"/><text class="tx" x="'+(L-6)+'" y="'+(Y(t)+3.5)+'" text-anchor="end">'+fmt(t)+'</text>'});
+ [0,6,12,18,24].forEach(function(h){g+='<text class="tx" x="'+X(Math.min(HRS-1,h*12))+'" y="'+(H2-7)+'" text-anchor="'+(h===0?'start':h===24?'end':'middle')+'">'+h+'h</text>'});
+ var d='',pen=false,prev=-9;
+ a.forEach(function(v,i){if(!v){return}if(i-prev>3)pen=false;d+=(pen?'L':'M')+X(i)+' '+Y(v)+' ';if(!pen&&(a[i+1]===0||i===HRS-1)&&!(a[i+2]>0))g+='<circle class="pt" cx="'+X(i)+'" cy="'+Y(v)+'" r="2"/>';pen=true;prev=i});
+ var mi=a.indexOf(sm.max);g+='<path class="ln" d="'+d+'" style="stroke-width:1.6"/><circle class="pt" cx="'+X(mi)+'" cy="'+Y(sm.max)+'" r="3.5"/>';
+ return '<section class="card"><div class="ch-head"><h3>Pulso del día</h3><span class="v">'+sm.prom+'<small>bpm prom</small></span></div>'+svgWrap(g,'Pulso a lo largo del día',H2)+
+  '<p class="sub mono" style="margin-top:6px">Reposo aprox. '+sm.reposo+' · Mín '+sm.min+' · Máx '+sm.max+' bpm · '+sm.n+' lecturas de DaFit</p></section>';
 }
 
 /* ---------- monito 8 bits del encabezado ---------- */
