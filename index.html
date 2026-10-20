@@ -1109,7 +1109,10 @@ function edActions(kind,d){
  return errP()+(d.id&&d.confirm?'<p class="err">¿Eliminar esta tarjeta? Los registros anteriores no se borran.</p>':'');
 }
 function comidaEditor(st){
- var d=st.ed;syncIngs(d);var auto=useIngs(d);
+ var d=st.ed;
+ if(d.np)return prodForm('ed.np',d.np)+errP()+'<div class="actions"><button type="button" class="ghost" data-save="comida:npcancel">Cancelar</button><button type="button" class="primary" data-save="comida:npsave">Guardar producto</button></div>';
+ if(d.pick)return catalog(st,'pick');
+ syncIngs(d);var auto=useIngs(d);
  return '<h3>'+(d.id?'Editar tarjeta':'Nueva tarjeta')+'</h3>'+iconRow(d,'ed.nombre','Pollo con arroz')+
   '<div><span class="glabel">Aparece en</span><div style="height:6px"></div>'+togB('ed.momentos',MOMENTOS,d.momentos)+'</div>'+
   ingSection(d)+
@@ -1138,7 +1141,8 @@ function ingTotals(ings){var t={kcal:0,p:0,c:0,g:0};(ings||[]).forEach(function(
 function syncIngs(d){if(!useIngs(d))return;var t=ingTotals(d.ings);d.kcal=Math.round(t.kcal);d.p=r1(t.p);d.c=r1(t.c);d.g=r1(t.g)}
 function macroLine(r){return fmt(Math.round(r.kcal))+' kcal · P '+fmt(r1(r.p))+' · C '+fmt(r1(r.c))+' · G '+fmt(r1(r.g))}
 function ingLine(pr,cant){if(!pr)return 'ya no está en tu catálogo';if(!(numv(cant)>0))return 'escribe '+cuantos(pr.unidad)+' usas';return macroLine(prodCalc(pr,cant))}
-function prodSub(pr){return 'por '+fmt(pr.base)+' '+pr.unidad+' · '+fmt(pr.kcal||0)+' kcal · P '+fmt(pr.p||0)+' · C '+fmt(pr.c||0)+' · G '+fmt(pr.g||0)}
+function baseLabel(pr){return pr.unidad==='unid'?(+pr.base===1?'1 unidad':fmt(pr.base)+' unidades'):fmt(pr.base)+' '+pr.unidad}
+function prodSub(pr){var nb=function(t){return t.replace(/ /g,'\u00a0')};return [baseLabel(pr),fmt(pr.kcal||0)+' kcal','P '+fmt(pr.p||0),'C '+fmt(pr.c||0),'G '+fmt(pr.g||0)].map(nb).join(' · ')}
 function npDraft(pr){pr=pr||{};var nv=function(v){return v==null?'':v};return {id:pr.id||null,nombre:pr.nombre||'',base:pr.base||100,unidad:pr.unidad||'g',kcal:nv(pr.kcal),p:nv(pr.p),c:nv(pr.c),g:nv(pr.g),confirm:false}}
 function uName(u){return u==='g'?'gramos':u==='ml'?'ml':'unidades'}
 function cuantos(u){return u==='unid'?'cuántas unidades':'cuántos '+uName(u)}
@@ -1166,22 +1170,14 @@ function upsertProd(np){
 }
 function ingSection(d){
  var rows=(d.ings||[]).map(function(i,n){var pr=findProd(i.pid);
-  return '<div class="ing"><div style="min-width:0"><div class="nm">'+(pr?esc(pr.nombre):'Producto borrado')+'</div><div class="sub mono" id="ingk_'+n+'">'+esc(ingLine(pr,i.cant))+'</div>'+(pr?'<div class="sub mono tb">Tabla '+esc(prodSub(pr))+'</div>':'')+'</div>'+
+  return '<div class="ing"><div style="min-width:0"><div class="nm">'+(pr?esc(pr.nombre):'Producto borrado')+'</div><div class="sub mono">'+(pr?esc(prodSub(pr)):'ya no está en tu catálogo')+'</div></div>'+
    '<span class="inp"><input data-b="ed.ings.'+n+'.cant" type="number" inputmode="decimal" step="any" min="0" aria-label="Cantidad de '+esc(pr?pr.nombre:'producto')+'" placeholder="'+(pr?esc(fmt(pr.base)):'')+'" value="'+esc(i.cant==null?'':i.cant)+'"'+(pr?'':' disabled')+'><em>'+(pr?pr.unidad:'')+'</em></span>'+
    '<button type="button" class="x" data-ingdel="'+n+'" aria-label="Quitar '+esc(pr?pr.nombre:'producto')+'">×</button></div>'}).join('');
- var tot='';
- var pick;
- if(d.np)pick=prodForm('ed.np',d.np)+'<div class="actions"><button type="button" class="primary small" data-save="comida:npsave">Guardar producto</button><button type="button" class="ghost small" data-save="comida:npcancel">Cancelar</button></div>';
- else if(d.pick){
-  var list=db.prods.slice().sort(function(a,b){return a.nombre.localeCompare(b.nombre,'es')});
-  pick='<div class="pbox"><span class="glabel">Toca un producto para agregarlo</span>'+(list.length>6?'<span class="inp"><input id="pq" type="text" placeholder="Buscar producto" autocomplete="off" aria-label="Buscar producto"></span>':'')+
-   (list.length?'<div class="chips">'+list.map(function(pr){return '<button type="button" class="chip" data-ingadd="'+esc(pr.id)+'" data-pname="'+esc(pr.nombre.toLowerCase())+'">'+esc(pr.nombre)+' <span class="mono" style="opacity:.7">'+esc(fmt(pr.base)+pr.unidad)+'</span></button>'}).join('')+'</div>':'<p class="sub">Tu catálogo está vacío. Crea tu primer producto con su tabla nutrimental.</p>')+
-   '<div class="actions"><button type="button" class="ghost small" data-act="npnew">+ Nuevo producto</button><button type="button" class="ghost small" data-act="pickoff">Cerrar</button></div></div>';
- }
- else pick='<button type="button" class="ghost small" data-act="pickon" style="align-self:flex-start">+ Agregar producto</button>';
+ var pick='<button type="button" class="ghost small" data-act="pickon" style="align-self:flex-start">+ Agregar producto</button>',tot='';
  return '<div class="stack" style="gap:8px"><span class="glabel">Productos y cantidades</span>'+
   (rows?'<div>'+rows+'</div>'+tot:'<p class="sub">Agrega productos de tu catálogo, escribe cuánto usas y los macros se calculan solos.</p>')+pick+'</div>';
 }
+function focusIng(n){var fi=document.querySelector('[data-b="ed.ings.'+n+'.cant"]');if(!fi)return;try{fi.scrollIntoView({block:'center'})}catch(_){}try{fi.focus({preventScroll:true})}catch(_){}}
 function updIngs(){
  var d=SH&&SH.st&&SH.st.ed;if(!d||!d.ings)return;syncIngs(d);
  d.ings.forEach(function(i,n){var el=$('#ingk_'+n);if(el)el.textContent=ingLine(findProd(i.pid),i.cant)});
@@ -1190,17 +1186,19 @@ function updIngs(){
 }
 
 function protPer100(pr){return pr.kcal>0&&pr.p!=null?pr.p/pr.kcal*100:null}
-function prodList(st){
- var sort=st.psort||'az',list=db.prods.slice();
+function catalog(st,mode){
+ var sort=st.psort||'az',list=db.prods.slice(),used={};
+ if(mode==='pick')(st.ed.ings||[]).forEach(function(i){used[i.pid]=1});
  if(sort==='p')list.sort(function(a,b){return (protPer100(b)||0)-(protPer100(a)||0)});else list.sort(function(a,b){return a.nombre.localeCompare(b.nombre,'es')});
  var rows=list.map(function(pr){var pp=protPer100(pr);
-  return '<button type="button" class="prow pbtn" data-pedit="'+esc(pr.id)+'" data-pname="'+esc(pr.nombre.toLowerCase())+'"><div style="min-width:0"><b>'+esc(pr.nombre)+'</b><div class="sub mono">'+esc(prodSub(pr))+'</div>'+(pp!=null?'<div class="sub mono tb" style="opacity:.75;font-size:11px">'+esc(fmt(r1(pp)))+' g de proteína por cada 100 kcal</div>':'')+'</div>'+icon('pencil')+'</button>'}).join('');
- return '<h3>Mis productos</h3>'+
+  return '<button type="button" class="prow pbtn" '+(mode==='pick'?'data-ingadd':'data-pedit')+'="'+esc(pr.id)+'" data-pname="'+esc(pr.nombre.toLowerCase())+'"><div style="min-width:0"><b>'+esc(pr.nombre)+'</b>'+(used[pr.id]?' <span class="cnt">ya agregado</span>':'')+'<div class="sub mono">'+esc(prodSub(pr))+'</div>'+(pp!=null?'<div class="sub mono tb" style="opacity:.75;font-size:11px">'+esc(fmt(r1(pp)))+' g de proteína por cada 100 kcal</div>':'')+'</div>'+icon(mode==='pick'?'plus':'pencil')+'</button>'}).join('');
+ return '<h3>'+(mode==='pick'?'Elige un producto':'Mis productos')+'</h3>'+
   (list.length>6?'<span class="inp"><input id="pq" type="text" placeholder="Buscar producto" autocomplete="off" aria-label="Buscar producto"></span>':'')+
   (list.length>1?'<div class="chips"><button type="button" class="chip'+(sort==='az'?' on':'')+'" data-pick="psort" data-val="az">A–Z</button><button type="button" class="chip'+(sort==='p'?' on':'')+'" data-pick="psort" data-val="p">Más proteína por kcal</button></div>':'')+
   (list.length?'<div class="list">'+rows+'</div>':'<p class="empty">Aún no tienes productos. Crea el primero con su tabla nutrimental.</p>')+
-  '<div class="actions"><button type="button" class="ghost" data-act="plistoff">Volver</button><button type="button" class="primary" data-cardnew="prod">+ Nuevo producto</button></div>';
+  '<div class="actions"><button type="button" class="ghost" data-act="'+(mode==='pick'?'pickoff':'plistoff')+'">Volver</button><button type="button" class="primary" '+(mode==='pick'?'data-act="npnew"':'data-cardnew="prod"')+'>+ Nuevo producto</button></div>';
 }
+function prodList(st){return catalog(st,'list')}
 function macroStats(o,pc){
  var mv=function(k){var v=numv(o[k]);return v==null?null:(k==='kcal'?Math.round(v*pc):r1(v*pc))};
  var stat=function(cls,lab,v,u){return '<div class="'+cls+'"><span class="k">'+lab+'</span><span class="v">'+(v==null?'—':fmt(v))+(v!=null&&u?'<small>'+u+'</small>':'')+'</span></div>'};
@@ -1285,7 +1283,8 @@ function openEdit(id){
 }
 function drawSheet(){
  if(!SH)return;var f=$('#sheetForm'),sc=f.scrollTop;
- f.innerHTML=(SH.kind==='prod'?'':dayBar())+VIEWS[SH.kind](SH.st);f.scrollTop=sc;
+ var cs=SH.st,noDay=SH.kind==='prod'||(SH.kind==='comida'&&(cs.np||cs.plist||(cs.ed&&(cs.ed.pick||cs.ed.np))));
+ f.innerHTML=(noDay?'':dayBar())+VIEWS[SH.kind](SH.st);f.scrollTop=sc;
  if(SH.kind==='sueno')updateRing();
 }
 function toast(msg,undo){
@@ -1359,11 +1358,11 @@ function doSave(name){
   if(act==='pnsave'){var rp=upsertProd(st.np);if(rp.err){st.err=rp.err;return drawSheet()}st.np=null;toast('Producto guardado: '+rp.prod.nombre);drawSheet();$('#sheetForm').scrollTop=0;return}
   if(act==='back'){st.ed=null;return drawSheet()}
   if(act==='del'){var d0=st.ed;if(!d0.confirm){d0.confirm=true;return drawSheet()}db.lib=db.lib.filter(function(i){return i.id!==d0.id});persist();st.ed=null;toast('Tarjeta eliminada');return drawSheet()}
-  if(act==='npcancel'){st.ed.np=null;return drawSheet()}
+  if(act==='npcancel'){st.ed.np=null;drawSheet();$('#sheetForm').scrollTop=0;return}
   if(act==='npsave'){var rr=upsertProd(st.ed.np);if(rr.err){st.err=rr.err;return drawSheet()}
    var nuevo=!st.ed.np.id;if(nuevo)st.ed.ings.push({pid:rr.prod.id,cant:''});
    st.ed.np=null;st.ed.pick=false;syncIngs(st.ed);toast('Producto guardado: '+rr.prod.nombre);drawSheet();
-   if(nuevo){var fi=document.querySelector('[data-b="ed.ings.'+(st.ed.ings.length-1)+'.cant"]');if(fi)try{fi.focus()}catch(_){}}return}
+   if(nuevo)focusIng(st.ed.ings.length-1);return}
   if(st.ed.np){st.err='Primero guarda o cancela el producto nuevo.';return drawSheet()}
   var falta=(st.ed.ings||[]).filter(function(i){return findProd(i.pid)&&!(numv(i.cant)>0)})[0];
   if(falta){var fp=findProd(falta.pid);st.err='Escribe '+cuantos(fp.unidad)+' de '+fp.nombre+' usas.';return drawSheet()}
@@ -1421,7 +1420,7 @@ document.addEventListener('click',function(e){
  else if(d.tog&&st){var arr=getP(st,d.tog),ix=arr.indexOf(d.val);if(ix>-1)arr.splice(ix,1);else arr.push(d.val);drawSheet()}
  else if(d.sm&&st)saveMuscle(d.sm);
  else if(d.pedit&&st){var pe0=findProd(d.pedit);if(pe0){st.np=npDraft(pe0);st.err='';drawSheet();$('#sheetForm').scrollTop=0}}
- else if(d.ingadd&&st&&st.ed){st.ed.ings.push({pid:d.ingadd,cant:''});st.ed.pick=false;st.err='';var ni=st.ed.ings.length-1;drawSheet();var fi=document.querySelector('[data-b="ed.ings.'+ni+'.cant"]');if(fi)try{fi.focus()}catch(_){}}
+ else if(d.ingadd&&st&&st.ed){st.ed.ings.push({pid:d.ingadd,cant:''});st.ed.pick=false;st.err='';drawSheet();focusIng(st.ed.ings.length-1)}
  else if(d.ingdel!=null&&st&&st.ed){st.ed.ings.splice(+d.ingdel,1);syncIngs(st.ed);drawSheet()}
  else if(d.prodedit){var pe=findProd(d.prodedit);if(pe)openSheet('prod',{np:npDraft(pe),err:''})}
  else if('prodnew' in d)openSheet('prod',{np:npDraft(),err:''});
@@ -1467,9 +1466,9 @@ function act(a){
  else if(a==='prevlog'&&st&&st.prev){var pv=st.prev;logComida(pv,st.momento,st.porc);toast(st.momento+': '+pv.nombre+(st.porc!==1?' ×'+st.porc:''));st.prev=null;st.porc=1;drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='prevedit'&&st&&st.prev){st.ed=edFromComida(st.prev);st.prev=null;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='prevback'&&st){st.prev=null;st.porc=1;drawSheet();$('#sheetForm').scrollTop=0}
- else if(a==='pickon'&&st&&st.ed){st.ed.pick=true;st.ed.np=null;st.err='';drawSheet()}
- else if(a==='pickoff'&&st&&st.ed){st.ed.pick=false;drawSheet()}
- else if(a==='npnew'&&st&&st.ed){st.ed.np=npDraft();st.ed.pick=false;st.err='';drawSheet()}
+ else if(a==='pickon'&&st&&st.ed){st.ed.pick=true;st.ed.np=null;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
+ else if(a==='pickoff'&&st&&st.ed){st.ed.pick=false;drawSheet();var lastI=$('[data-act="pickon"]');if(lastI)try{lastI.scrollIntoView({block:'center'})}catch(_){}}
+ else if(a==='npnew'&&st&&st.ed){st.ed.np=npDraft();st.err='';drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='nophoto'&&st&&st.ed){st.ed.photo='';drawSheet()}
  else if(a==='addm'&&st){var n=(st.newM||'').trim();if(n&&db.grupos[st.addG].indexOf(n)<0){db.grupos[st.addG].push(n);st.sel[n]=true;st.w[n]='';persist()}st.addG=null;st.newM='';drawSheet()}
  else if(a==='cancelm'&&st){st.addG=null;st.newM='';drawSheet()}
