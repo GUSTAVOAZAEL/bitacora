@@ -701,7 +701,7 @@ function renderHist(){
  var chips=['todos'].concat(ORDEN).map(function(k){return '<button type="button" class="chip'+(histFilter===k?' on':'')+'" data-filter="'+k+'">'+(k==='todos'?'Todos':TYPES[k].s)+'</button>'}).join('');
  var td=today();
  var dateUI='<section class="card stack" style="gap:10px" aria-label="Buscar por fecha"><div class="grid2"><label class="fld"><span>Desde</span><span class="inp"><input id="hFrom" type="date" max="'+td+'" value="'+hFrom+'"></span></label><label class="fld"><span>Hasta</span><span class="inp"><input id="hTo" type="date" max="'+td+'" value="'+hTo+'"></span></label></div>'+
-  '<div class="chips"><button type="button" class="chip" data-hq="hoy">Hoy</button><button type="button" class="chip" data-hq="ayer">Ayer</button><button type="button" class="chip" data-hq="todo">Quitar fechas</button></div></section>';
+  '<div class="chips">'+[['hoy','Hoy',hFrom===td&&hTo===td],['ayer','Ayer',hFrom===dayKeyOff(1)&&hTo===dayKeyOff(1)],['todo','Todas las fechas',!hFrom&&!hTo]].map(function(q){return '<button type="button" class="chip'+(q[2]?' on':'')+'" data-hq="'+q[0]+'" aria-pressed="'+q[2]+'">'+q[1]+'</button>'}).join('')+'</div></section>';
  var list=sorted().filter(function(e){return histFilter==='todos'||e.type===histFilter}).filter(function(e){var k=dk(e.ts);return !(hFrom&&k<hFrom)&&!(hTo&&k>hTo)}).slice(0,hFrom||hTo?500:150);
  var groups=[],map={};
  list.forEach(function(e){var k=dk(e.ts);if(!map[k]){map[k]=[];groups.push(k)}map[k].push(e)});
