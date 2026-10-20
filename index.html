@@ -149,6 +149,11 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
 .ci-media img{height:52px;width:calc(100% - 44px);object-fit:cover;border-radius:10px}
 .ci b{font-weight:600;line-height:1.2;overflow-wrap:anywhere}
 .ci .sub{font-size:12px;overflow-wrap:anywhere}
+.ci-media{padding-right:42px;overflow:hidden}
+.ci .ilist{display:flex;flex-direction:column;gap:2px;width:100%;font-size:13px;color:var(--muted);line-height:1.25}
+.ci .ilist span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ci .ilist b{font:600 12px var(--mono);color:var(--fg);margin-right:5px}
+.ci .ilist i{font:500 11px var(--mono);font-style:normal}
 .ci .ings{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}
 /* vista previa de comida */
 .pv{border:1px solid var(--line);background:var(--bg);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
@@ -208,7 +213,7 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
 .emos{display:inline-flex;align-items:center;white-space:nowrap;line-height:1}
 .emos .emo{font-size:1em}
 .emos.n2 .emo{font-size:.84em}.emos.n3 .emo{font-size:.7em}.emos.n4 .emo{font-size:.6em}
-.emos .more{font:600 .32em var(--mono);color:var(--muted);margin-left:3px}
+.emos .more{font:600 15px var(--mono);color:var(--muted);margin-left:4px}
 .pe{font-family:var(--emoji);margin-right:6px;font-weight:400}
 .emo-in{width:68px;height:68px;flex:none;display:block;border:1px solid var(--line);border-radius:16px;background:var(--bg);color:var(--fg);font:38px/1 var(--emoji);text-align:center;padding:0;caret-color:transparent;cursor:pointer}
 .emo-in:focus{outline:3px solid var(--accent);outline-offset:1px}
@@ -812,7 +817,7 @@ function renderChartsHoy(head,k){
 
 /* ---------- Datos ---------- */
 function exportJSON(){return JSON.stringify({app:'bitacora-salud',v:2,exportado:new Date().toISOString(),
- ajustes:{vasoMl:db.vasoMl,goals:db.goals,lib:db.lib.filter(function(i){return !i.ex}),prods:db.prods,suples:db.suples,molest:db.molest,tags:db.tags,gtags:db.gtags,grupos:db.grupos,eps:db.eps},
+ ajustes:{vasoMl:db.vasoMl,goals:db.goals,lib:db.lib.filter(function(i){return !i.ex}),prods:db.prods,suples:db.suples,molest:db.molest,tags:db.tags,gtags:db.gtags,grupos:db.grupos,eps:db.eps,theme:db.theme},
  registros:db.entries.filter(function(e){return !e.ex})},null,1)}
 function showVersion(){var el=$('#verTxt');if(!el)return;if(!window.caches){el.textContent='Versión: sin service worker';return}
  caches.keys().then(function(ks){var v=ks.filter(function(k){return k.indexOf('bitacora-')===0}).sort().pop();var e2=$('#verTxt');if(e2)e2.textContent='Versión instalada: '+(v?v.replace('bitacora-',''):'sin instalar')}).catch(function(){})}
@@ -827,16 +832,19 @@ function renderDatos(){
  '<section class="card stack"><h2>Metas diarias</h2><div class="grid2">'+
   gf('s_kcal','Calorías',G.kcal,'kcal',50)+gf('s_p','Proteína',G.p,'g',5)+gf('s_c','Carbohidratos',G.c,'g',5)+gf('s_g','Grasa',G.g,'g',1)+
   gf('s_meta','Meta de agua',G.ml,'ml',100)+gf('s_vaso','Un vaso',db.vasoMl,'ml',10)+'</div><p class="sub">Los cambios se guardan al salir de cada campo.</p></section>'+
- '<section class="card stack"><h2>Respaldo</h2><p class="sub">'+real+' registros propios'+(ex?' y '+ex+' de ejemplo (no se exportan)':'')+'. Último respaldo: '+le+'.</p>'+
-  '<div class="actions"><button class="primary" type="button" data-act="copy">Copiar JSON</button><button class="ghost" type="button" data-act="share">Compartir</button></div>'+
-  '<textarea id="expTxt" readonly aria-label="Contenido del respaldo">'+esc(exportJSON())+'</textarea>'+
-  '<p class="sub">Pega el JSON en la app Notas para guardarlo. Instalada desde tu propio sitio, “Compartir” te dejará guardar un archivo en Archivos.</p></section>'+
+ '<section class="card stack"><h2>Respaldo</h2><p class="sub">'+real+' registros, '+db.prods.length+' productos y '+db.lib.filter(function(i){return !i.ex}).length+' tarjetas propias'+(ex?' (los '+ex+' registros de ejemplo no se guardan)':'')+'. Último respaldo: '+le+'.</p>'+
+  '<div class="actions"><button class="primary" type="button" data-act="dl">Descargar respaldo</button><label class="ghost" for="loadFile" style="display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer">Cargar respaldo</label></div>'+
+  '<input id="loadFile" class="sr" type="file" accept=".json,application/json,text/plain">'+
+  '<p class="sub">Al descargar, en iPhone se abre el menú de compartir: elige <b>Guardar en Archivos</b>. Para recuperar, toca <b>Cargar respaldo</b> y elige ese archivo. Se combina con lo que ya tienes: no borra ni duplica nada.</p>'+
+  '<details class="recd"><summary>Otras opciones</summary><div class="stack" style="gap:10px">'+
+   '<div class="actions"><button class="ghost" type="button" data-act="copy">Copiar JSON</button></div>'+
+   '<textarea id="expTxt" readonly aria-label="Contenido del respaldo">'+esc(exportJSON())+'</textarea>'+
+   '<label class="fld"><span>O pega aquí un JSON para restaurar</span><textarea id="impTxt" placeholder="{ ... }"></textarea></label>'+
+   '<button class="ghost" type="button" data-act="import">Importar y combinar</button>'+
+  '</div></details></section>'+
  '<section class="card stack"><h2>Widget de pantalla de inicio</h2><p class="sub">Usa la app Scriptable (gratis). 1) En Scriptable toca +, pega el script y ponle de nombre <b>Bitacora</b>, sin acento. 2) En tu pantalla de inicio agrega un widget de Scriptable, tamaño grande, y en Script elige Bitacora. 3) Cada vez que quieras ponerlo al día, toca “↻ Widget” en Hoy.</p>'+
   '<div class="actions"><button class="primary" type="button" data-act="copyscript">Copiar script</button><button class="ghost" type="button" data-act="widget">Probar ↻ Widget</button></div>'+
   '<textarea id="wsTxt" readonly aria-label="Script de Scriptable" style="min-height:90px">'+esc(WSCRIPT)+'</textarea></section>'+
- '<section class="card stack"><h2>Restaurar</h2><label class="fld"><span>Pega aquí el JSON o elige un archivo</span><textarea id="impTxt" placeholder="{ ... }"></textarea></label>'+
-  '<input id="impFile" type="file" accept=".json,application/json,text/plain" aria-label="Archivo JSON">'+
-  '<button class="primary" type="button" data-act="import">Importar y combinar</button></section>'+
  '<section class="card stack"><h2>Productos</h2><p class="sub">Tus tablas nutrimentales. Al crear una comida eliges el producto, escribes los gramos y se calculan los macros.</p>'+
   (db.prods.length?'<div class="list">'+db.prods.slice().sort(function(a,b){return a.nombre.localeCompare(b.nombre,'es')}).map(function(pr){return '<div class="prow"><div style="min-width:0"><b>'+pEmo(pr)+esc(pr.nombre)+'</b><div class="sub mono">'+esc(prodSub(pr))+'</div></div><button type="button" class="del" data-prodedit="'+esc(pr.id)+'">Editar</button></div>'}).join('')+'</div>':'<p class="empty" style="padding:6px 0">Aún no tienes productos.</p>')+
   '<button type="button" class="ghost" data-prodnew>+ Nuevo producto</button></section>'+
@@ -860,10 +868,24 @@ async function doShare(){
  }catch(e){if(e&&e.name==='AbortError')return}
  toast('Aquí no se pueden compartir archivos. Usa Copiar JSON y pégalo en Notas.');
 }
-function mergeById(dst,src){var have={};dst.forEach(function(x){have[x.id]=1});(src||[]).forEach(function(x){if(x&&x.id&&!have[x.id]){if(x.photo&&!safePhoto(x.photo))x.photo='';dst.push(x);have[x.id]=1}})}
-function doImport(){
- var raw=($('#impTxt').value||'').trim();if(!raw){toast('Pega primero el JSON.');return}
- var obj;try{obj=JSON.parse(raw)}catch(e){toast('El texto no es un JSON válido.');return}
+function mergeById(dst,src){var have={},n=0;dst.forEach(function(x){have[x.id]=1});(src||[]).forEach(function(x){if(x&&x.id&&!have[x.id]){if(x.photo&&!safePhoto(x.photo))x.photo='';dst.push(x);have[x.id]=1;n++}});return n}
+function downloadBackup(){
+ var name='bitacora-respaldo-'+today()+'.json',txt=exportJSON();
+ var done=function(m){markExport();if(tab==='datos')renderDatos();toast(m)};
+ var direct=function(){try{var u=URL.createObjectURL(new Blob([txt],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(u);a.remove()},1500);done('Respaldo descargado: '+name)}catch(e){toast('No se pudo descargar. Usa Otras opciones → Copiar JSON.')}};
+ try{
+  var f=new File([txt],name,{type:'application/json'});
+  if(/iPhone|iPad|iPod/.test(navigator.userAgent)&&navigator.canShare&&navigator.canShare({files:[f]})){
+   navigator.share({files:[f],title:'Respaldo Bitácora'}).then(function(){done('Respaldo guardado')}).catch(function(e){if(!e||e.name!=='AbortError')direct()});return;
+  }
+ }catch(e){}
+ direct();
+}
+function doImport(){importText(($('#impTxt').value||'').trim())}
+function importText(raw){
+ if(!raw){toast('Pega primero el JSON.');return}
+ var obj;try{obj=JSON.parse(raw)}catch(e){toast('Ese archivo no es un respaldo válido.');return}
+ var cP=0,cL=0;
  var arr=Array.isArray(obj)?obj:(obj&&obj.registros);
  if(!Array.isArray(arr)){toast('No encontré registros en ese JSON.');return}
  var have={};db.entries.forEach(function(e){have[e.id]=1});var n=0;
@@ -873,12 +895,13 @@ function doImport(){
   if(a.vasoMl>0)db.vasoMl=+a.vasoMl;
   if(a.goals){['kcal','p','c','g','ml'].forEach(function(k){if(+a.goals[k]>0)db.goals[k]=+a.goals[k]})}
   else if(a.metaMl>0)db.goals.ml=+a.metaMl;
-  mergeById(db.lib,a.lib);mergeById(db.prods,a.prods);mergeById(db.suples,a.suples);mergeById(db.molest,a.molest);mergeById(db.eps,a.eps);
+  cL=mergeById(db.lib,a.lib);cP=mergeById(db.prods,a.prods);mergeById(db.suples,a.suples);mergeById(db.molest,a.molest);mergeById(db.eps,a.eps);
   if(Array.isArray(a.gtags))a.gtags.forEach(function(t){if(typeof t==='string'&&db.gtags.indexOf(t)<0)db.gtags.push(t)});
   if(Array.isArray(a.tags))a.tags.forEach(function(t){if(typeof t==='string'&&db.tags.indexOf(t)<0)db.tags.push(t)});
   if(a.grupos&&typeof a.grupos==='object')Object.keys(a.grupos).forEach(function(g){if(!Array.isArray(a.grupos[g]))return;if(!db.grupos[g])db.grupos[g]=[];a.grupos[g].forEach(function(m){if(typeof m==='string'&&db.grupos[g].indexOf(m)<0)db.grupos[g].push(m)})});
  }
- persist();renderAll();renderDatos();toast('Se importaron '+n+' registros.');
+ if(a&&a.theme&&typeof a.theme==='object'&&typeof applyTheme==='function'){db.theme=Object.assign({},db.theme,a.theme);applyTheme()}
+ persist();renderAll();renderDatos();toast('Listo: '+n+' registros, '+cP+' productos y '+cL+' tarjetas nuevas.');
 }
 
 /* ---------- hojas de captura ---------- */
@@ -907,12 +930,12 @@ function togB(path,opts,arr){return '<div class="seg" role="group">'+opts.map(fu
 function errP(){return SH.st.err?'<p class="err" role="alert">'+esc(SH.st.err)+'</p>':''}
 function closeRow(label){return '<div class="actions"><button type="button" class="ghost" data-close>'+(label||'Cancelar')+'</button></div>'}
 function cardEmojis(it){var out=[];if(it&&it.ings)it.ings.forEach(function(i){var pr=findProd(i.pid);if(pr&&pr.emoji&&out.indexOf(pr.emoji)<0)out.push(pr.emoji)});return out}
-function emoStack(es){var n=Math.min(es.length,4);return '<span class="emos n'+n+'">'+es.slice(0,4).map(function(e){return '<span class="emo">'+esc(e)+'</span>'}).join('')+(es.length>4?'<span class="more">+'+(es.length-4)+'</span>':'')+'</span>'}
+function emoStack(es){var show=es.length>4?3:es.length,n=Math.min(es.length,4);return '<span class="emos n'+n+'">'+es.slice(0,show).map(function(e){return '<span class="emo">'+esc(e)+'</span>'}).join('')+(es.length>show?'<span class="more">+'+(es.length-show)+'</span>':'')+'</span>'}
 function mediaHTML(it){var es=cardEmojis(it);if(es.length)return emoStack(es);return safePhoto(it.photo)?'<img alt="" src="'+it.photo+'">':'<span class="emo">'+esc(it.emoji||'🍽️')+'</span>'}
 function pEmo(pr){return pr&&pr.emoji?'<span class="pe">'+esc(pr.emoji)+'</span>':''}
 function cardHTML(kind,it,sub,cnt,rid,extra){
  var attr=rid!=null?'data-rid="'+rid+'"':'data-id="'+esc(it.id)+'"';
- return '<div class="ci"><button type="button" class="ci-main" data-card="'+kind+'" '+attr+'><span class="ci-media">'+mediaHTML(it)+'</span><b>'+esc(it.nombre)+'</b>'+(sub?'<span class="sub mono ings">'+esc(sub)+'</span>':'')+(extra?'<span class="sv2">'+esc(extra)+'</span>':'')+(cnt?'<span class="cnt">hoy ×'+cnt+'</span>':'')+'</button>'+
+ return '<div class="ci"><button type="button" class="ci-main" data-card="'+kind+'" '+attr+'><span class="ci-media">'+mediaHTML(it)+'</span><b>'+esc(it.nombre)+'</b>'+(Array.isArray(sub)?'<span class="ilist">'+sub.map(function(l){return l.more?'<i>+'+l.more+' más</i>':'<span><b>'+esc(l.q)+'</b>'+esc(l.n)+'</span>'}).join('')+'</span>':sub?'<span class="sub mono ings">'+esc(sub)+'</span>':'')+(extra?'<span class="sv2">'+esc(extra)+'</span>':'')+(cnt?'<span class="cnt">hoy ×'+cnt+'</span>':'')+'</button>'+
   '<button type="button" class="ci-edit" data-cardedit="'+kind+'" '+attr+' aria-label="Editar '+esc(it.nombre)+'">'+icon('pencil')+'</button></div>';
 }
 function newCard(kind,label){return '<div class="ci add"><button type="button" class="ci-main" data-cardnew="'+kind+'">'+icon('plus')+label+'</button></div>'}
@@ -1082,7 +1105,7 @@ var VIEWS={
   var xtra=function(i){if(!cs)return '';var v=cval(i);return v==null?'':CS[cs][1]+fmt(cs==='kcal'?Math.round(v):r1(v))+' '+CS[cs][2]+(cb==='k'?' / 100 kcal':'')};
   var fsum=fil+(cs?' · más '+CS[cs][0].toLowerCase()+(cb==='k'?' por kcal':''):'');
   var cnt=function(id){return dayEntries(vday()).filter(function(e){return e.type==='comida'&&e.lib===id&&(all||e.momento===fil)}).length};
-  var sub=function(i){return useIngs(i)?ingsText(i.ings,1):fmt(i.kcal)+' kcal · P '+fmt(i.p||0)+' g'};
+  var sub=function(i){return useIngs(i)?ingLines(i.ings):fmt(i.kcal)+' kcal · P '+fmt(i.p||0)+' g'};
   if(st.prev)return comidaPreview(st);
   return '<div class="mini">'+(vday()===today()?'Hoy':dayName(vday()))+': '+fmt(t.kcal)+' / '+fmt(G.kcal)+' kcal · P '+fmt(t.p)+' / '+fmt(G.p)+' g</div>'+
    '<details class="fild" id="filDet"'+(st.filOpen?' open':'')+'><summary>Filtros · <b>'+esc(fsum)+'</b></summary><div class="stack">'+
@@ -1282,6 +1305,11 @@ function macroStats(o,pc){
  var mv=function(k){var v=numv(o[k]);return v==null?null:(k==='kcal'?Math.round(v*pc):r1(v*pc))};
  var stat=function(cls,lab,v,u){return '<div class="'+cls+'"><span class="k">'+lab+'</span><span class="v">'+(v==null?'—':fmt(v))+(v!=null&&u?'<small>'+u+'</small>':'')+'</span></div>'};
  return stat('kc','kcal',mv('kcal'))+stat('p','Proteína',mv('p'),'g')+stat('c','Carbos',mv('c'),'g')+stat('g','Grasa',mv('g'),'g');
+}
+function uShort(u){return u==='unid'?'u':u}
+function ingLines(ings){
+ var out=(ings||[]).map(function(i){var pr=findProd(i.pid);return pr?{q:fmt(r1(numv(i.cant)||0))+' '+uShort(pr.unidad),n:pr.nombre}:null}).filter(Boolean);
+ return out.length>4?out.slice(0,3).concat([{more:out.length-3}]):out;
 }
 function ingsText(ings,pc){return (ings||[]).map(function(i){var pr=findProd(i.pid);return pr?pr.nombre+' '+fmt(r1((numv(i.cant)||0)*pc))+' '+pr.unidad:''}).filter(Boolean).join(' · ')}
 function comidaPreview(st){
@@ -1571,6 +1599,7 @@ function act(a){
  else if(a==='dayhoy'&&SH)setDay(today());
  else if(a==='dayayer'&&SH)setDay(dayKeyOff(1));
  else if(a==='share')doShare();
+ else if(a==='dl')downloadBackup();
  else if(a==='widget'){toast('Abriendo Scriptable…');var wj=JSON.stringify(widgetData()),go=function(){window.location.href=widgetURL()};try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(wj).then(function(){setTimeout(go,100)},function(){setTimeout(go,150)})}else setTimeout(go,150)}catch(_){setTimeout(go,150)}}
  else if(a==='copyscript'){var ws=$('#wsTxt');var done=function(ok){toast(ok?'Script copiado. Pégalo en Scriptable.':'Selecciona el texto y cópialo a mano.')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(WSCRIPT).then(function(){done(true)},function(){ws&&ws.select();done(false)})}else{ws&&ws.select();done(false)}}
  else if(a==='import')doImport();
@@ -1624,6 +1653,7 @@ document.addEventListener('change',function(e){
  var gm={s_kcal:'kcal',s_p:'p',s_c:'c',s_g:'g',s_meta:'ml'};
  if(gm[t.id]){var v=+t.value;if(v>0){db.goals[gm[t.id]]=v;persist();renderHoy()}return}
  if(t.id==='s_vaso'){var vv=+t.value;if(vv>0){db.vasoMl=vv;persist();renderHoy()}return}
+ if(t.id==='loadFile'&&t.files&&t.files[0]){var lf=new FileReader();lf.onload=function(){importText(String(lf.result||'').trim());t.value=''};lf.onerror=function(){toast('No pude leer ese archivo.')};lf.readAsText(t.files[0]);return}
  if(t.id==='impFile'&&t.files&&t.files[0]){var fr=new FileReader();fr.onload=function(){$('#impTxt').value=String(fr.result||'')};fr.readAsText(t.files[0]);return}
  if(t.id==='photoIn'&&t.files&&t.files[0]&&SH&&SH.st.ed){
   var rd=new FileReader();rd.onload=function(){var im=new Image();im.onload=function(){
