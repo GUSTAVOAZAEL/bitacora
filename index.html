@@ -386,6 +386,14 @@ select{min-height:44px;border:1px solid var(--line);background:var(--bg);color:v
 .mealrow{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0}
 .mealrow .bar{margin-top:0}
 .chipx{display:inline-flex;gap:6px;align-items:center}
+.ints{position:relative;padding:14px 4px 4px}
+.ints input{-webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:6px;background:linear-gradient(90deg,#2E9E5B,#E8C547 50%,#D64545);outline:none;margin:0;position:relative;z-index:1}
+.ints input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;border-radius:50%;background:var(--surface);border:3px solid var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.ints input::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--surface);border:3px solid var(--fg)}
+.ints .dots{position:absolute;left:19px;right:19px;top:18px;height:4px;display:flex;justify-content:space-between;z-index:2;pointer-events:none}
+.ints .dots i{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.9)}
+.ints .nums{display:flex;justify-content:space-between;padding:8px 7px 0;font:600 13px var(--mono);color:var(--muted)}
+.ints .nums b{width:16px;text-align:center}
 details.dsec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:0 16px}
 details.dsec[open]{padding-bottom:16px}
 details.dsec>summary{list-style:none;min-height:60px;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer}
@@ -991,6 +999,11 @@ function fld(path,label,o){o=o||{};var v=getP(SH.st,path);
  return '<label class="fld"><span>'+esc(label)+'</span><span class="inp'+(o.dis?' calc':'')+'"><input data-b="'+path+'" type="'+(o.t||'number')+'" '+(o.t==='text'?'autocomplete="off"':'inputmode="decimal" step="'+(o.step||'any')+'" min="0"')+' placeholder="'+esc(o.ph||'')+'" value="'+esc(v==null?'':v)+'"'+(o.dis?' disabled':'')+'>'+(o.unit?'<em>'+o.unit+'</em>':'')+'</span></label>'}
 function segB(path,opts,cur,num){return '<div class="seg" role="group">'+opts.map(function(o){var v=Array.isArray(o)?o[0]:o,l=Array.isArray(o)?o[1]:o;return '<button type="button" class="'+(String(v)===String(cur)?'on':'')+'" data-pick="'+path+'" data-val="'+esc(v)+'"'+(num?' data-n="1"':'')+'>'+esc(l)+'</button>'}).join('')+'</div>'}
 function togB(path,opts,arr){return '<div class="seg" role="group">'+opts.map(function(o){return '<button type="button" class="'+(arr.indexOf(o)>-1?'on':'')+'" data-tog="'+path+'" data-val="'+esc(o)+'">'+esc(o)+'</button>'}).join('')+'</div>'}
+var INTCOL=['','#2E9E5B','#8DB84A','#E8C547','#E28A45','#D64545'];
+function intSlider(st,extra){
+ return '<div><span class="glabel">Intensidad</span><div class="ints"><input type="range" min="1" max="5" step="1" value="'+st.int+'" data-int="1" aria-label="Intensidad de 1 a 5"><div class="dots"><i></i><i></i><i></i><i></i><i></i></div><div class="nums"><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b></div></div>'+
+  '<p class="sub" style="margin-top:6px"><b class="intn" style="color:'+INTCOL[st.int]+'">'+st.int+' · '+INT[st.int]+'</b>'+(extra?'. '+extra:'')+'</p></div>';
+}
 function errP(){return SH.st.err?'<p class="err" role="alert">'+esc(SH.st.err)+'</p>':''}
 function closeRow(label){return '<div class="actions"><button type="button" class="ghost" data-close>'+(label||'Cancelar')+'</button></div>'}
 function cardEmojis(it){var out=[];if(it&&it.ings)it.ings.forEach(function(i){var pr=findProd(i.pid);if(pr&&pr.emoji&&out.indexOf(pr.emoji)<0)out.push(pr.emoji)});return out}
@@ -1224,7 +1237,7 @@ var VIEWS={
    errP()+'<div class="actions"><button type="button" class="ghost" data-close>Cancelar</button><button type="button" class="primary" data-save="e_suple:ok">Guardar</button></div>';
  },
  e_molestia:function(st){
-  return '<p class="sub"><b>'+esc(st.tipo)+': '+esc(st.nombre)+'</b></p><div><span class="glabel">Intensidad</span><div style="height:6px"></div>'+segB('int',[1,2,3,4,5],st.int,true)+'<p class="sub" style="margin-top:6px"><b>'+st.int+'</b> · '+INT[st.int]+'.</p></div>'+
+  return '<p class="sub"><b>'+esc(st.tipo)+': '+esc(st.nombre)+'</b></p>'+intSlider(st)+
    errP()+'<div class="actions"><button type="button" class="ghost" data-close>Cancelar</button><button type="button" class="primary" data-save="e_molestia:ok">Guardar</button></div>';
  },
  molestia:function(st){
@@ -1234,8 +1247,7 @@ var VIEWS={
   var cnt=function(i){return todays().filter(function(e){return e.type==='molestia'&&e.nombre===i.nombre&&e.tipo===i.tipo}).length};
   return (ep?'<div class="notice warn"><p><b>Enfermo: '+esc(ep.nombre)+'</b> desde '+dayName(dk(ep.ini)).toLowerCase()+'</p><div class="row"><button class="ghost small" type="button" data-act="recover">Ya me recuperé</button></div></div>':'')+
    segB('tipo',['Físico','Digestivo','Enfermedad'],st.tipo)+
-   '<div><span class="glabel">Intensidad</span><div style="height:6px"></div>'+segB('int',[1,2,3,4,5],st.int,true)+'<p class="sub" style="margin-top:6px"><b>'+st.int+'</b> · '+INT[st.int]+'. 1 es algo soportable, 5 es intenso o súper fuerte.</p></div>'+
-   (rec.length?'<div><span class="glabel">Recientes</span><div class="cgrid" style="margin-top:6px">'+rec.map(function(i,n){return cardHTML('molestia',i,i.tipo,null,n)}).join('')+'</div></div>':'')+
+   intSlider(st,'1 es algo soportable, 5 es intenso o súper fuerte')+
    '<div><span class="glabel">Toca una para registrarla · '+st.tipo+'</span><div class="cgrid" style="margin-top:6px">'+items.map(function(i){return cardHTML('molestia',i,'',cnt(i))}).join('')+newCard('molestia','Nueva molestia')+'</div></div>'+closeRow('Listo');
  },
  prod:function(st){
@@ -1245,12 +1257,11 @@ var VIEWS={
  tema:function(){return temaView()},
  pulso:function(st){
   var nd=db.hr?Object.keys(db.hr).length:0,hs=hrArr(vday()),sm=hs&&hrSum(hs);
-  return '<div class="pbox"><b>Desde DaFit</b>'+
+  return (sm?hrDayCard(vday()):'')+'<div class="pbox"><b>Desde DaFit</b>'+
    (sm?'<p class="sub mono">'+esc(dayName(vday()))+': prom '+sm.prom+' · máx '+sm.max+' · reposo aprox. '+sm.reposo+' bpm ('+sm.n+' lecturas)</p>':'')+
    '<p class="sub" style="font-size:13px">'+(nd?nd+(nd===1?' día guardado':' días guardados')+(db.hrLast?' · última actualización '+esc(dayName(dk(db.hrLast)).toLowerCase())+' '+hhmm(db.hrLast):''):'Aún no has cargado datos de DaFit.')+'</p>'+
    '<label class="primary" for="dafitIn" style="display:flex;align-items:center;justify-content:center;cursor:pointer">Actualizar desde DaFit</label><input id="dafitIn" class="sr" type="file" multiple>'+
    '<p class="sub" style="font-size:13px">Elige el archivo <b>app_'+esc(today())+'.log</b> para lo de hoy. Puedes elegir varios días a la vez para cargar tu historial; no se duplica nada.</p></div>'+
-   (sm?hrDayCard(vday()):'')+
    '<span class="glabel">O escríbelo a mano</span><div class="grid3">'+fld('reposo','Reposo',{unit:'bpm'})+fld('prom','Promedio',{unit:'bpm'})+fld('max','Máximo',{unit:'bpm'})+'</div>'+errP()+
    '<div class="actions"><button type="button" class="ghost" data-close>Cancelar</button><button type="button" class="primary" data-save="pulso:ok">Guardar</button></div>';
  }
@@ -1707,6 +1718,7 @@ function act(a){
 document.addEventListener('input',function(e){
  var t=e.target;if(!SH)return;var st=SH.st;
  if(t.id==='shTime'){if(t.value){SH.time=t.value;var nt=$('#dayNoteT');if(nt)nt.textContent=t.value}return}
+ if(t.dataset.int){st.int=+t.value;var ib=$('.intn');if(ib){ib.textContent=st.int+' · '+INT[st.int];ib.style.color=INTCOL[st.int]}return}
  if(t.dataset.emo){if(e.isComposing)return;var gx=lastGrapheme(t.value);if(gx){setP(SH.st,t.dataset.emo,gx);if(t.dataset.emo==='ed.emoji'&&SH.st.ed)SH.st.ed.photo='';if(t.value!==gx)t.value=gx}return}
  if(t.id==='pq'){var q=(t.value||'').trim().toLowerCase();SH.st.pqv=t.value;$$('[data-ingadd],[data-pedit]').forEach(function(b){b.hidden=!!q&&b.dataset.pname.indexOf(q)<0});return}
  if(t.dataset.b){setP(st,t.dataset.b,t.value);if(t.dataset.b.indexOf('ed.ings.')===0)updIngs()}
@@ -1835,18 +1847,23 @@ function hrDayCard(k){
   g+='<path d="'+d+' L'+X(sg[sg.length-1])+' '+base+' L'+X(sg[0])+' '+base+' Z" style="fill:var(--accent);opacity:.14;stroke:none"/><path class="ln" d="'+d+'" style="stroke-width:1.6"/>';
  });
  var li=sm.last,lv=a[li];
- g+='<line x1="'+L+'" x2="'+(W2-R)+'" y1="'+Y(sm.prom)+'" y2="'+Y(sm.prom)+'" style="stroke:var(--bad);stroke-width:1.2;stroke-dasharray:4 3;opacity:.8"/><text class="goaltx" x="'+(L+3)+'" y="'+(Y(sm.prom)-3)+'" text-anchor="start" style="fill:var(--bad);paint-order:stroke;stroke:var(--surface);stroke-width:3px">prom '+sm.prom+'</text>';
+ g+='<line x1="'+L+'" x2="'+(W2-R)+'" y1="'+Y(sm.prom)+'" y2="'+Y(sm.prom)+'" style="stroke:var(--bad);stroke-width:1.2;stroke-dasharray:4 3;opacity:.8"/>';
+ var ra=rollAvg(a),rd='',rp=false;ra.forEach(function(v,i){if(v==null){rp=false;return}rd+=(rp?'L':'M')+X(i)+' '+Y(v)+' ';rp=true});
+ if(rd)g+='<path d="'+rd+'" style="fill:none;stroke:var(--c-c);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;opacity:.95"/>';
  g+='<line class="hrcur" x1="'+X(li)+'" x2="'+X(li)+'" y1="'+T+'" y2="'+base+'" style="stroke:var(--fg);stroke-width:1;opacity:.55"/><circle class="hrdot" cx="'+X(li)+'" cy="'+Y(lv)+'" r="4" style="fill:var(--accent);stroke:var(--surface);stroke-width:2"/>';
  return '<section class="card"><div class="ch-head"><div><h3>Pulso del día</h3><span class="mini hrt">'+esc(dayName(k))+' · '+slotHM(li)+'</span></div><span class="v"><span class="hrv">'+lv+'</span><small>bpm</small></span></div>'+
   '<div class="hrbox" data-hr="'+k+'" data-lo="'+ax.lo+'" data-hi="'+ax.hi+'" style="touch-action:pan-y;cursor:crosshair">'+svgWrap(g,'Pulso a lo largo del día. Desliza para ver cada lectura.',H2)+'</div>'+
-  '<p class="sub mono hrh" style="margin-top:4px">'+hourTxt(a,li)+'</p>'+
+  '<p class="mini" style="margin-top:4px"><span style="color:var(--c-c)">━</span> promedio de la última hora · <span style="color:var(--bad)">┅</span> promedio del día ('+sm.prom+')</p>'+
+  '<p class="sub mono hrh" style="margin-top:2px">'+hourTxt(a,li)+'</p>'+
   hourBars(a,sm)+
   '<p class="sub mono" style="margin-top:6px">Prom '+sm.prom+' · Reposo aprox. '+sm.reposo+' · Mín '+sm.min+' · Máx '+sm.max+' bpm · '+sm.n+' lecturas</p>'+
   '<p class="sub" style="font-size:13px">Desliza el dedo sobre la gráfica para ver el pulso de cada momento.</p></section>';
 }
 /* DaFit rotula cada bloque de 5 min con su hora de cierre */
+/* promedio de la última hora (12 lecturas de 5 min hacia atrás) */
+function rollAvg(a){var out=[];for(var i=0;i<HRS;i++){if(!a[i]){out.push(null);continue}var w=a.slice(Math.max(0,i-11),i+1).filter(function(x){return x>0});out.push(w.length>=3?Math.round(w.reduce(function(x,y){return x+y},0)/w.length):null)}return out}
 function hourAvgs(a){var h=[];for(var i=0;i<24;i++){var v=a.slice(i*12,i*12+12).filter(function(x){return x>0});h.push(v.length?Math.round(v.reduce(function(x,y){return x+y},0)/v.length):null)}return h}
-function hourTxt(a,i){var h=Math.floor(i/12),hv=hourAvgs(a)[h];return hv==null?'':'De '+pad(h)+':00 a '+pad(h+1)+':00 · promedio '+hv+' bpm'}
+function hourTxt(a,i){var r=rollAvg(a)[i],h=Math.floor(i/12),hv=hourAvgs(a)[h];return (r!=null?'Última hora: '+r+' bpm':'')+(r!=null&&hv!=null?' · ':'')+(hv!=null?'de '+pad(h)+' a '+pad(h+1)+' h: '+hv:'')}
 function hourBars(a,sm){
  var hv=hourAvgs(a),ok=hv.filter(function(v){return v!=null});if(ok.length<2)return '';
  var W2=340,H2=92,L=34,R=8,T=8,B=18,lo=Math.min.apply(null,ok.concat([sm.prom]))-8,hi=Math.max.apply(null,ok.concat([sm.prom]))+4;
