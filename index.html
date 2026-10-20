@@ -293,6 +293,8 @@ input[type=number]{-moz-appearance:textfield}
 .wcol{width:100px;flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
 .wcol .bottle{width:72px}
 .wcol .v{font-size:32px;margin-top:4px}
+.wcol .sub{line-height:1.25}
+.wcol .sub.mono{white-space:nowrap;font-size:12px}
 .wcol button{width:100%;padding:0 6px;margin-top:4px}
 .dp .mbars{flex:1 1 0;min-width:0}
 .mb-h{flex-wrap:wrap}
@@ -384,6 +386,9 @@ select{min-height:44px;border:1px solid var(--line);background:var(--bg);color:v
 .mealrow{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0}
 .mealrow .bar{margin-top:0}
 .chipx{display:inline-flex;gap:6px;align-items:center}
+.mname{background:transparent;border:0;color:inherit;font:inherit;padding:0;min-height:32px;text-decoration:underline dotted;text-underline-offset:3px}
+.tagc{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:0 11px;border-radius:15px;background:var(--soft);color:var(--fg);font-size:14px;line-height:1.2}
+.tagc b{font:600 12px var(--mono);color:var(--accent)}
 </style>
 </head>
 <body>
@@ -805,7 +810,7 @@ function gymLog(days){
  var es=db.entries.filter(function(e){return e.type==='gym'&&set[dk(e.ts)]&&((e.tags&&e.tags.length)||e.nota)}).sort(function(a,b){return a.ts<b.ts?1:-1});
  var cnt={};es.forEach(function(e){(e.tags||[]).forEach(function(t){cnt[t]=(cnt[t]||0)+1})});
  var keys=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]});
- var chips=keys.length?'<div class="chips" style="margin:6px 0 4px">'+keys.map(function(t){return '<span class="chip">'+esc(t)+' ×'+cnt[t]+'</span>'}).join('')+'</div>':'';
+ var chips=keys.length?'<div class="chips" style="margin:6px 0 4px">'+keys.map(function(t){return '<span class="tagc">'+esc(t)+'<b>×'+cnt[t]+'</b></span>'}).join('')+'</div>':'';
  var rows=es.slice(0,20).map(function(e){
   var m=e.animoGym?GYMOOD[e.animoGym-1]:null,k=dk(e.ts),why=(e.tags||[]).concat(e.nota?['“'+e.nota+'”']:[]).join(' · ');
   return '<div class="ent">'+(m?'<span class="emo">'+m.e+'</span>':icon('gym'))+'<div><b>'+esc(e.rutina)+(m?' · '+m.l:'')+'</b><div class="sub">'+esc(why)+'</div></div><div class="col"><span class="t">'+esc(dayName(k))+'</span></div></div>'}).join('');
@@ -848,12 +853,25 @@ function exportJSON(){return JSON.stringify({app:'bitacora-salud',v:2,exportado:
  registros:db.entries.filter(function(e){return !e.ex})},null,1)}
 function showVersion(){var el=$('#verTxt');if(!el)return;if(!window.caches){el.textContent='Versión: sin service worker';return}
  caches.keys().then(function(ks){var v=ks.filter(function(k){return k.indexOf('bitacora-')===0}).sort().pop();var e2=$('#verTxt');if(e2)e2.textContent='Versión instalada: '+(v?v.replace('bitacora-',''):'sin instalar')}).catch(function(){})}
+var renM=null;
+function renameMuscle(g,old,nw){
+ nw=String(nw||'').trim();if(!nw){toast('Escribe un nombre.');return false}
+ if(nw===old){return true}
+ var dup=Object.keys(db.grupos).some(function(k){return db.grupos[k].some(function(x){return x.toLowerCase()===nw.toLowerCase()&&x!==old})});
+ if(dup){toast('Ya existe un músculo llamado '+nw+'.');return false}
+ db.grupos[g]=db.grupos[g].map(function(x){return x===old?nw:x});
+ db.entries.forEach(function(e){if(e.type!=='gym'||!e.pesos||e.pesos[old]==null)return;if(e.pesos[nw]==null)e.pesos[nw]=e.pesos[old];delete e.pesos[old];if(e.prs)e.prs=e.prs.map(function(x){return x===old?nw:x})});
+ if(muscle===old)muscle=nw;
+ persist();renderAll();toast(old+' ahora es '+nw);return true;
+}
 function renderDatos(){
  var real=db.entries.filter(function(e){return !e.ex}).length,ex=db.entries.length-real;
  var le=db.lastExport?dayName(dk(db.lastExport))+' '+hhmm(db.lastExport):'nunca',G=db.goals;
  function gf(id,label,val,unit,step){return '<label class="fld"><span>'+label+'</span><span class="inp"><input id="'+id+'" type="number" inputmode="decimal" min="0" step="'+step+'" value="'+val+'"><em>'+unit+'</em></span></label>'}
  var grp=Object.keys(db.grupos).map(function(g){
-  return '<div class="stack" style="gap:8px"><span class="glabel">'+esc(g)+'</span><div class="chips">'+db.grupos[g].map(function(m){return '<span class="chipx chip">'+esc(m)+'<button type="button" class="del" style="margin:0;min-height:28px" data-delm="'+esc(g)+'|'+esc(m)+'" aria-label="Quitar '+esc(m)+'">×</button></span>'}).join('')+'</div>'+
+  var ed=renM&&renM.g===g?renM.m:null;
+  return '<div class="stack" style="gap:8px"><span class="glabel">'+esc(g)+'</span><div class="chips">'+db.grupos[g].map(function(m){return '<span class="chipx chip'+(ed===m?' on':'')+'"><button type="button" class="mname" data-renm="'+esc(g)+'|'+esc(m)+'" aria-label="Renombrar '+esc(m)+'">'+esc(m)+'</button><button type="button" class="del" style="margin:0;min-height:28px" data-delm="'+esc(g)+'|'+esc(m)+'" aria-label="Quitar '+esc(m)+'">×</button></span>'}).join('')+'</div>'+
+   (ed!=null?'<div class="stack" style="gap:8px"><span class="glabel">Nuevo nombre para '+esc(ed)+'</span><div class="addrow"><span class="inp"><input id="rnm_in" type="text" value="'+esc(ed)+'" autocomplete="off" aria-label="Nuevo nombre"></span></div><div class="actions"><button type="button" class="ghost small" data-renmno="1">Cancelar</button><button type="button" class="primary small" data-renmok="1">Guardar</button></div><p class="sub">Tus registros anteriores de '+esc(ed)+' pasan al nuevo nombre.</p></div>':'')+
    '<div class="addrow"><span class="inp"><input id="gm_'+esc(g)+'" type="text" placeholder="Nuevo músculo" autocomplete="off"></span><button type="button" class="ghost small" data-addm="'+esc(g)+'">Añadir</button></div></div>'}).join('');
  $('#datos').innerHTML=
  '<section class="card stack"><h2>Metas diarias</h2><div class="grid2">'+
@@ -1566,7 +1584,7 @@ function doSave(name){
 }
 
 /* ---------- eventos ---------- */
-var SEL='[data-open],[data-quick],[data-tab],[data-filter],[data-hq],[data-dayview],[data-range],[data-del],[data-edit],[data-close],[data-act],[data-pick],[data-tog],[data-card],[data-cardedit],[data-cardnew],[data-save],[data-tm],[data-addg],[data-tagedit],[data-undo],[data-delm],[data-addm],[data-sm],[data-ingadd],[data-ingdel],[data-prodedit],[data-prodnew],[data-pedit],[data-thm],[data-tmode],[data-tline],[data-tmon]';
+var SEL='[data-open],[data-quick],[data-tab],[data-filter],[data-hq],[data-dayview],[data-range],[data-del],[data-edit],[data-close],[data-act],[data-pick],[data-tog],[data-card],[data-cardedit],[data-cardnew],[data-save],[data-tm],[data-addg],[data-tagedit],[data-undo],[data-delm],[data-addm],[data-renm],[data-renmok],[data-renmno],[data-sm],[data-ingadd],[data-ingdel],[data-prodedit],[data-prodnew],[data-pedit],[data-thm],[data-tmode],[data-tline],[data-tmon]';
 document.addEventListener('click',function(e){
  var t=e.target.closest(SEL);
  if(!t){if(e.target.id==='scrim')closeSheet();return}
@@ -1616,6 +1634,9 @@ document.addEventListener('click',function(e){
  else if(d.tagedit&&st){st.editing=d.tagedit;st.editVal=d.tagedit;drawSheet()}
  else if(d.edit)openEdit(d.edit);
  else if(d.del){if(t.classList.contains('arm')){removeEntry(d.del)}else{t.classList.add('arm');t.textContent='¿Seguro?';setTimeout(function(){if(t.isConnected){t.classList.remove('arm');t.textContent='Borrar'}},3000)}}
+ else if(d.renm){var rp=d.renm.split('|');renM={g:rp[0],m:rp[1]};renderDatos();var ri=$('#rnm_in');if(ri)try{ri.focus();ri.select()}catch(_){}}
+ else if(d.renmno){renM=null;renderDatos()}
+ else if(d.renmok){var ri2=$('#rnm_in');if(renM&&ri2&&renameMuscle(renM.g,renM.m,ri2.value)){renM=null;renderDatos()}}
  else if(d.delm){var pr=d.delm.split('|');db.grupos[pr[0]]=db.grupos[pr[0]].filter(function(x){return x!==pr[1]});persist();renderDatos()}
  else if(d.addm){var inp=document.getElementById('gm_'+d.addm),nm=inp&&inp.value.trim();if(nm&&db.grupos[d.addm].indexOf(nm)<0){db.grupos[d.addm].push(nm);persist();renderDatos()}}
  else if(d.act)act(d.act);
