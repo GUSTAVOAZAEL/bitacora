@@ -1,7 +1,7 @@
 /* Service worker de Bitácora de salud.
    Guarda la app en el teléfono para abrirla sin internet.
    Cuando cambies cualquier archivo de la app, sube el número de VERSION. */
-var VERSION='bitacora-v22';
+var VERSION='bitacora-v23';
 var FILES=['./','index.html','manifest.webmanifest','icon.png'];
 
 self.addEventListener('install',function(e){
