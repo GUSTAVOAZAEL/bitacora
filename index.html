@@ -286,7 +286,15 @@ input[type=number]{-moz-appearance:textfield}
   padding:16px max(16px,env(safe-area-inset-left,0px)) calc(16px + env(safe-area-inset-bottom,0px))}
 #sheet .in{width:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px;min-height:0;flex:1 1 auto}
 #sheet header{display:flex;justify-content:space-between;align-items:center}
-#sheetClose{width:44px;height:44px;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:12px;font-size:22px;line-height:1}
+#sheetClose{height:44px;padding:0 14px 0 10px;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:12px;font:600 16px var(--display);letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:4px}
+#sheetClose span{font-size:22px;line-height:1;margin-top:-2px}
+.cat-top{position:sticky;top:0;z-index:2;background:var(--surface);display:flex;flex-direction:column;gap:10px;padding-bottom:8px;box-shadow:0 1px 0 var(--line)}
+.cat-bot{position:sticky;bottom:-4px;z-index:2;background:var(--surface);padding:10px 0 4px;box-shadow:0 -1px 0 var(--line)}
+.cat-top .chips{flex-wrap:nowrap;overflow-x:auto}
+.cat-top .inp:focus-within{outline-offset:-3px}
+.cat-top .chip{flex:0 0 auto}
+details.recd{padding:0 12px 12px}
+details.recd summary{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 #sheetForm{display:flex;flex-direction:column;gap:14px;overflow:auto;min-height:0;padding-bottom:4px;overscroll-behavior:contain}
 @media (prefers-reduced-motion:no-preference){#sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}}
 
@@ -345,7 +353,7 @@ select{min-height:44px;border:1px solid var(--line);background:var(--bg);color:v
 <div id="scrim" hidden></div>
 <section id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
   <div class="in">
-    <header><h2 id="sheetTitle"></h2><button id="sheetClose" type="button" aria-label="Cerrar">×</button></header>
+    <header><h2 id="sheetTitle"></h2><button id="sheetClose" type="button" aria-label="Volver"><span aria-hidden="true">‹</span>Volver</button></header>
     <div id="sheetForm"></div>
   </div>
 </section>
@@ -1035,7 +1043,7 @@ var VIEWS={
   return '<div class="mini">'+(vday()===today()?'Hoy':dayName(vday()))+': '+fmt(t.kcal)+' / '+fmt(G.kcal)+' kcal · P '+fmt(t.p)+' / '+fmt(G.p)+' g</div>'+
    segB('momento',MOMENTOS,st.momento)+
    '<p class="sub">Toca una tarjeta para ver qué contiene y registrarla.</p>'+
-   (rec.length?'<div><span class="glabel">Recientes</span><div class="cgrid" style="margin-top:6px">'+rec.map(function(i,n){return cardHTML('comida',i,sub(i),null,n)}).join('')+'</div></div>':'')+
+   (rec.length?'<details class="recd" id="recDet"'+(st.recOpen?' open':'')+'><summary>Recientes ('+rec.length+')</summary><div class="cgrid">'+rec.map(function(i,n){return cardHTML('comida',i,sub(i),null,n)}).join('')+'</div></details>':'')+
    '<div><span class="glabel">Mis tarjetas · '+st.momento+'</span><div class="cgrid" style="margin-top:6px">'+items.map(function(i){return cardHTML('comida',i,sub(i),cnt(i.id))}).join('')+'</div>'+(items.length?'':'<p class="sub">Aún no tienes tarjetas para '+esc(st.momento.toLowerCase())+'.</p>')+
    '<div class="cgrid" style="margin-top:10px">'+newCard('prod','Nuevo producto')+newCard('comida','Nueva comida')+'</div>'+
    '<button type="button" class="ghost full" data-act="pliston" style="margin-top:10px">Mis productos ('+db.prods.length+')</button></div>'+
@@ -1185,18 +1193,22 @@ function updIngs(){
  var et=$('#edTot');if(et)et.innerHTML=macroStats(d,1);
 }
 
-function protPer100(pr){return pr.kcal>0&&pr.p!=null?pr.p/pr.kcal*100:null}
+function per100(pr,k){return pr.kcal>0&&pr[k]!=null?pr[k]/pr.kcal*100:null}
+function protPer100(pr){return per100(pr,'p')}
+var MNAME={p:'proteína',c:'carbohidratos',g:'grasa'};
 function catalog(st,mode){
- var sort=st.psort||'az',list=db.prods.slice(),used={};
+ var sort=st.psort||'az',list=db.prods.slice(),used={};if(!MNAME[sort])sort='az';
  if(mode==='pick')(st.ed.ings||[]).forEach(function(i){used[i.pid]=1});
- if(sort==='p')list.sort(function(a,b){return (protPer100(b)||0)-(protPer100(a)||0)});else list.sort(function(a,b){return a.nombre.localeCompare(b.nombre,'es')});
- var rows=list.map(function(pr){var pp=protPer100(pr);
-  return '<button type="button" class="prow pbtn" '+(mode==='pick'?'data-ingadd':'data-pedit')+'="'+esc(pr.id)+'" data-pname="'+esc(pr.nombre.toLowerCase())+'"><div style="min-width:0"><b>'+esc(pr.nombre)+'</b>'+(used[pr.id]?' <span class="cnt">ya agregado</span>':'')+'<div class="sub mono">'+esc(prodSub(pr))+'</div>'+(pp!=null?'<div class="sub mono tb" style="opacity:.75;font-size:11px">'+esc(fmt(r1(pp)))+' g de proteína por cada 100 kcal</div>':'')+'</div>'+icon(mode==='pick'?'plus':'pencil')+'</button>'}).join('');
- return '<h3>'+(mode==='pick'?'Elige un producto':'Mis productos')+'</h3>'+
+ if(sort!=='az')list.sort(function(a,b){return (per100(b,sort)||0)-(per100(a,sort)||0)});else list.sort(function(a,b){return a.nombre.localeCompare(b.nombre,'es')});
+ var mk=sort==='az'?'p':sort;
+ var rows=list.map(function(pr){var pp=per100(pr,mk);
+  return '<button type="button" class="prow pbtn" '+(mode==='pick'?'data-ingadd':'data-pedit')+'="'+esc(pr.id)+'" data-pname="'+esc(pr.nombre.toLowerCase())+'"><div style="min-width:0"><b>'+esc(pr.nombre)+'</b>'+(used[pr.id]?' <span class="cnt">ya agregado</span>':'')+'<div class="sub mono">'+esc(prodSub(pr))+'</div>'+(pp!=null?'<div class="sub mono tb" style="opacity:.75;font-size:11px">'+esc(fmt(r1(pp)))+' g de '+MNAME[mk]+' por cada 100 kcal</div>':'')+'</div>'+icon(mode==='pick'?'plus':'pencil')+'</button>'}).join('');
+ var chip=function(v,l){return '<button type="button" class="chip'+(sort===v?' on':'')+'" data-pick="psort" data-val="'+v+'">'+l+'</button>'};
+ return '<div class="cat-top"><h3>'+(mode==='pick'?'Elige un producto':'Mis productos')+'</h3>'+
   (list.length>6?'<span class="inp"><input id="pq" type="text" placeholder="Buscar producto" autocomplete="off" aria-label="Buscar producto"></span>':'')+
-  (list.length>1?'<div class="chips"><button type="button" class="chip'+(sort==='az'?' on':'')+'" data-pick="psort" data-val="az">A–Z</button><button type="button" class="chip'+(sort==='p'?' on':'')+'" data-pick="psort" data-val="p">Más proteína por kcal</button></div>':'')+
+  (list.length>1?'<div class="chips">'+chip('az','A–Z')+chip('p','Proteína')+chip('c','Carbos')+chip('g','Grasas')+'</div>'+(sort!=='az'?'<span class="mini">Más '+MNAME[sort]+' primero, por cada 100 kcal</span>':''):'')+'</div>'+
   (list.length?'<div class="list">'+rows+'</div>':'<p class="empty">Aún no tienes productos. Crea el primero con su tabla nutrimental.</p>')+
-  '<div class="actions"><button type="button" class="ghost" data-act="'+(mode==='pick'?'pickoff':'plistoff')+'">Volver</button><button type="button" class="primary" '+(mode==='pick'?'data-act="npnew"':'data-cardnew="prod"')+'>+ Nuevo producto</button></div>';
+  '<div class="cat-bot"><div class="actions"><button type="button" class="ghost" data-act="'+(mode==='pick'?'pickoff':'plistoff')+'">Volver</button><button type="button" class="primary" '+(mode==='pick'?'data-act="npnew"':'data-cardnew="prod"')+'>+ Nuevo producto</button></div></div>';
 }
 function prodList(st){return catalog(st,'list')}
 function macroStats(o,pc){
@@ -1246,11 +1258,38 @@ function openSheet(kind,st,opt){
  SH={kind:kind,st:st||INIT[kind](),live:(kind==='comida'||kind==='suple'||kind==='molestia'),day:opt.day||'',time:opt.time||'',editId:opt.editId||null};
  if(kind==='sueno'&&!opt.editId&&SH.st.fecha==='ayer')SH.day=dayKeyOff(1);
  var TT=TYPES[kind.replace('e_','')];$('#sheetTitle').textContent=(SH.editId?'Editar · ':'')+(TT?TT.n:'Producto');
- $('#scrim').hidden=false;$('#sheet').hidden=false;
+ lockBody();$('#scrim').hidden=false;$('#sheet').hidden=false;fitSheet();
  drawSheet();$('#sheetForm').scrollTop=0;
  try{$('#sheetClose').focus({preventScroll:true})}catch(e){}
 }
-function closeSheet(){SH=null;$('#scrim').hidden=true;$('#sheet').hidden=true;$('#sheetForm').innerHTML=''}
+var lockY=null;
+function lockBody(){if(lockY!==null)return;lockY=window.scrollY||0;var b=document.body.style;b.position='fixed';b.top=(-lockY)+'px';b.left='0';b.right='0'}
+function unlockBody(){if(lockY===null)return;var b=document.body.style,y=lockY;lockY=null;b.position='';b.top='';b.left='';b.right='';window.scrollTo(0,y)}
+function fitSheet(){
+ var sh=$('#sheet'),vv=window.visualViewport;if(!vv||sh.hidden)return;
+ var kb=Math.max(0,Math.round(window.innerHeight-vv.height-vv.offsetTop));
+ sh.style.bottom=kb+'px';sh.style.maxHeight=Math.round(vv.height*(kb>40?.97:.92))+'px';
+}
+if(window.visualViewport){window.visualViewport.addEventListener('resize',fitSheet);window.visualViewport.addEventListener('scroll',fitSheet)}
+function closeSheet(){SH=null;$('#scrim').hidden=true;$('#sheet').hidden=true;$('#sheetForm').innerHTML='';var sh=$('#sheet');sh.style.bottom='';sh.style.maxHeight='';unlockBody()}
+/* Con el teclado abierto, iOS mueve la hoja al cerrarlo y el toque cae fuera del botón: se activa el botón al soltar el dedo */
+var tapB=null,tapX=0,tapY=0;
+document.addEventListener('touchstart',function(e){
+ tapB=null;var a=document.activeElement;if(!SH||!a||!/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
+ var b=e.target.closest&&e.target.closest('#sheet button');if(!b||b.disabled)return;
+ tapB=b;tapX=e.touches[0].clientX;tapY=e.touches[0].clientY;
+},{passive:true});
+document.addEventListener('touchmove',function(e){if(!tapB)return;var t=e.touches[0];if(Math.abs(t.clientX-tapX)>10||Math.abs(t.clientY-tapY)>10)tapB=null},{passive:true});
+document.addEventListener('touchend',function(e){
+ if(!tapB)return;var b=tapB;tapB=null;if(!b.isConnected||b.disabled)return;
+ e.preventDefault();b.click();
+},{passive:false});
+/* el campo con foco queda a la vista dentro de la hoja */
+document.addEventListener('focusin',function(e){
+ var t=e.target;if(!SH||!t.closest||!t.closest('#sheetForm')||!/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))return;
+ setTimeout(function(){fitSheet();if(t.isConnected&&document.activeElement===t)try{t.scrollIntoView({block:'center'})}catch(_){}},320);
+});
+document.addEventListener('focusout',function(){setTimeout(function(){fitSheet();if(lockY!==null&&window.scrollY)window.scrollTo(0,0)},120)});
 function dayBar(){
  var td=today(),d=SH.day||td,past=d!==td,showT=(past||SH.editId)&&SH.kind!=='sueno';
  if((past||SH.editId)&&!SH.time)SH.time=nowHM();
@@ -1282,9 +1321,10 @@ function openEdit(id){
  openSheet(kind,st,opt);
 }
 function drawSheet(){
- if(!SH)return;var f=$('#sheetForm'),sc=f.scrollTop;
+ if(!SH)return;var f=$('#sheetForm'),sc=f.scrollTop;var pqA=document.activeElement&&document.activeElement.id==='pq';
  var cs=SH.st,noDay=SH.kind==='prod'||(SH.kind==='comida'&&(cs.np||cs.plist||(cs.ed&&(cs.ed.pick||cs.ed.np))));
- f.innerHTML=(noDay?'':dayBar())+VIEWS[SH.kind](SH.st);f.scrollTop=sc;
+ f.innerHTML=(noDay?'':dayBar())+VIEWS[SH.kind](SH.st);
+ var pqI=$('#pq');if(pqI&&SH.st.pqv){pqI.value=SH.st.pqv;var q0=SH.st.pqv.trim().toLowerCase();$$('[data-ingadd],[data-pedit]').forEach(function(b){b.hidden=!!q0&&b.dataset.pname.indexOf(q0)<0});if(pqA)try{pqI.focus({preventScroll:true})}catch(_){}}f.scrollTop=sc;
  if(SH.kind==='sueno')updateRing();
 }
 function toast(msg,undo){
@@ -1461,12 +1501,12 @@ function act(a){
  else if(a==='copyscript'){var ws=$('#wsTxt');var done=function(ok){toast(ok?'Script copiado. Pégalo en Scriptable.':'Selecciona el texto y cópialo a mano.')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(WSCRIPT).then(function(){done(true)},function(){ws&&ws.select();done(false)})}else{ws&&ws.select();done(false)}}
  else if(a==='import')doImport();
  else if(a==='recover'){var ep=ongoingEp();if(ep){ep.fin=new Date().toISOString();persist();renderAll();if(SH&&SH.kind==='molestia')drawSheet();toast('Me alegra. Marqué tu recuperación.')}}
- else if(a==='pliston'&&st){st.plist=true;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
+ else if(a==='pliston'&&st){st.pqv='';st.plist=true;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='plistoff'&&st){st.plist=false;drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='prevlog'&&st&&st.prev){var pv=st.prev;logComida(pv,st.momento,st.porc);toast(st.momento+': '+pv.nombre+(st.porc!==1?' ×'+st.porc:''));st.prev=null;st.porc=1;drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='prevedit'&&st&&st.prev){st.ed=edFromComida(st.prev);st.prev=null;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='prevback'&&st){st.prev=null;st.porc=1;drawSheet();$('#sheetForm').scrollTop=0}
- else if(a==='pickon'&&st&&st.ed){st.ed.pick=true;st.ed.np=null;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
+ else if(a==='pickon'&&st&&st.ed){st.pqv='';st.ed.pick=true;st.ed.np=null;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='pickoff'&&st&&st.ed){st.ed.pick=false;drawSheet();var lastI=$('[data-act="pickon"]');if(lastI)try{lastI.scrollIntoView({block:'center'})}catch(_){}}
  else if(a==='npnew'&&st&&st.ed){st.ed.np=npDraft();st.err='';drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='nophoto'&&st&&st.ed){st.ed.photo='';drawSheet()}
@@ -1489,7 +1529,7 @@ document.addEventListener('input',function(e){
  var t=e.target;if(!SH)return;var st=SH.st;
  if(t.id==='shTime'){if(t.value){SH.time=t.value;var nt=$('#dayNoteT');if(nt)nt.textContent=t.value}return}
  if(t.id==='emoIn'&&SH.st.ed){if(e.isComposing)return;var gx=lastGrapheme(t.value);if(gx){SH.st.ed.emoji=gx;SH.st.ed.photo='';if(t.value!==gx)t.value=gx}return}
- if(t.id==='pq'){var q=(t.value||'').trim().toLowerCase();$$('[data-ingadd],[data-pedit]').forEach(function(b){b.hidden=!!q&&b.dataset.pname.indexOf(q)<0});return}
+ if(t.id==='pq'){var q=(t.value||'').trim().toLowerCase();SH.st.pqv=t.value;$$('[data-ingadd],[data-pedit]').forEach(function(b){b.hidden=!!q&&b.dataset.pname.indexOf(q)<0});return}
  if(t.dataset.b){setP(st,t.dataset.b,t.value);if(t.dataset.b.indexOf('ed.ings.')===0)updIngs()}
  else if(t.dataset.bm){st.w[t.dataset.bm]=t.value;refreshGym(t.dataset.bm)}
  else if(t.id==='tIni'||t.id==='tFin'){var p=(t.value||'').split(':');if(p.length>=2&&p[0]!==''){var mm=(+p[0])*60+(+p[1]);if(!isNaN(mm)){if(t.id==='tIni')st.ini=mm;else st.fin=mm;updateRing()}}}
@@ -1532,11 +1572,27 @@ document.addEventListener('pointermove',function(e){
 });
 function endDrag(){if(SH&&SH.kind==='sueno')SH.st.drag=null}
 document.addEventListener('pointerup',endDrag);document.addEventListener('pointercancel',endDrag);
+document.addEventListener('toggle',function(e){if(e.target&&e.target.id==='recDet'&&SH)SH.st.recOpen=e.target.open},true);
 document.addEventListener('keydown',function(e){
  if(e.key==='Escape'&&SH){closeSheet();return}
  var t=e.target;if((e.key==='Enter'||e.key===' ')&&t&&t.getAttribute&&t.getAttribute('role')==='button'&&t.dataset.open){e.preventDefault();openSheet(t.dataset.open)}
 });
-$('#sheetClose').addEventListener('click',closeSheet);
+$('#sheetClose').addEventListener('click',sheetBack);
+function sheetBack(){
+ if(!SH)return;var st=SH.st,k=SH.kind;
+ var re=function(){st.err='';drawSheet();$('#sheetForm').scrollTop=0};
+ if(k==='comida'){
+  if(st.ed&&st.ed.np){st.ed.np=null;return re()}
+  if(st.ed&&st.ed.pick){st.ed.pick=false;return re()}
+  if(st.ed){st.ed=null;return re()}
+  if(st.np){st.np=null;return re()}
+  if(st.plist){st.plist=false;return re()}
+  if(st.prev){st.prev=null;st.porc=1;return re()}
+ }
+ if((k==='suple'||k==='molestia')&&st.ed){st.ed=null;return re()}
+ if(k==='gym'&&st.addG){st.addG=null;return re()}
+ closeSheet();
+}
 
 function renderAll(){
  var n=new Date();$('#fecha').textContent=DIAS[n.getDay()]+' '+n.getDate()+' '+MESES[n.getMonth()];
