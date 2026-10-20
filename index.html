@@ -158,7 +158,7 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
 .ck2.part{border:1.5px solid var(--ok);color:var(--ok)}
 .ci-edit{position:absolute;top:6px;right:6px;width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--muted);display:flex;align-items:center;justify-content:center;padding:0}
 .ci-edit svg{width:18px;height:18px}
-.ci.add .ci-main{align-items:center;justify-content:center;border:1px dashed var(--muted);border-radius:14px;color:var(--muted);font:600 16px var(--display);letter-spacing:.05em;text-transform:uppercase}
+.ci.add .ci-main{align-items:center;justify-content:center;text-align:center;border:1px dashed var(--muted);border-radius:14px;color:var(--muted);font:600 16px var(--display);letter-spacing:.05em;text-transform:uppercase}
 .ci.add svg{width:28px;height:28px}
 .cnt{font:500 11px var(--mono);color:var(--accent)}
 .daybar{display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--line);border-radius:12px}
@@ -177,6 +177,10 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
 .epick button{height:42px;font-size:22px;font-family:var(--emoji);border:1px solid transparent;border-radius:8px;background:transparent;padding:0}
 .epick button.on{border-color:var(--accent);background:var(--soft)}
 .prev{display:flex;align-items:center;gap:12px}
+.idrow{display:flex;gap:12px;align-items:flex-end}
+.idrow>div{flex:1;min-width:0}
+.emo-in{width:68px;height:68px;flex:none;display:block;border:1px solid var(--line);border-radius:16px;background:var(--bg);color:var(--fg);font:38px/1 var(--emoji);text-align:center;padding:0;caret-color:transparent;cursor:pointer}
+.emo-in:focus{outline:3px solid var(--accent);outline-offset:1px}
 .prev .big{width:64px;height:64px;border-radius:14px;border:1px solid var(--line);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:38px;overflow:hidden;flex:none}
 .prev .big img{width:100%;height:100%;object-fit:cover}
 
@@ -862,10 +866,9 @@ function lastGrapheme(v){
  try{if(window.Intl&&Intl.Segmenter){var a=Array.from(new Intl.Segmenter('es',{granularity:'grapheme'}).segment(v));return a[a.length-1].segment}}catch(_){}
  var b=Array.from(v);return b[b.length-1];
 }
-function iconRow(d,withPhoto){
- return '<div class="prev"><div class="big" id="emoBig">'+mediaHTML(d)+'</div><div class="fld" style="flex:1"><span>Icono</span><span class="inp"><input id="emoIn" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" value="'+esc(d.emoji||'')+'" aria-label="Icono, escribe un emoji"></span></div></div>'+
-  '<p class="sub">Toca el campo, cambia al teclado de emojis con 🌐 o 😀 y elige el que quieras.</p>'+
-  (withPhoto?'<div class="actions"><label class="ghost small" for="photoIn" style="display:flex;align-items:center;justify-content:center;cursor:pointer">'+(d.photo?'Cambiar foto':'O usa una foto')+'</label>'+(d.photo?'<button type="button" class="ghost small" data-act="nophoto">Quitar foto</button>':'')+'</div><input id="photoIn" class="sr" type="file" accept="image/*">':'');
+function iconRow(d,path,ph){
+ return '<div class="idrow"><label class="fld" style="flex:none"><span>Icono</span><input id="emoIn" class="emo-in" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" value="'+esc(d.emoji||'')+'" aria-label="Icono: tócalo y elige un emoji"></label>'+
+  '<div>'+fld(path,'Nombre',{t:'text',ph:ph})+'</div></div><p class="sub">Toca el icono y elige un emoji de tu teclado.</p>';
 }
 
 /* estados iniciales */
@@ -998,6 +1001,7 @@ var VIEWS={
  },
  comida:function(st){
   if(st.ed)return comidaEditor(st);
+  if(st.np)return prodForm('np',st.np)+errP()+'<div class="actions"><button type="button" class="ghost" data-save="comida:pncancel">Cancelar</button><button type="button" class="primary" data-save="comida:pnsave">Guardar producto</button></div>';
   var t=totalsFor(vday()),G=db.goals;
   var rec=recentComidas(st.momento);SH.recents=rec;
   var items=db.lib.filter(function(i){return (i.momentos||[]).indexOf(st.momento)>-1});
@@ -1008,7 +1012,8 @@ var VIEWS={
    segB('momento',MOMENTOS,st.momento)+
    '<p class="sub">Toca una tarjeta para ver qué contiene y registrarla.</p>'+
    (rec.length?'<div><span class="glabel">Recientes</span><div class="cgrid" style="margin-top:6px">'+rec.map(function(i,n){return cardHTML('comida',i,sub(i),null,n)}).join('')+'</div></div>':'')+
-   '<div><span class="glabel">Mis tarjetas · '+st.momento+'</span><div class="cgrid" style="margin-top:6px">'+items.map(function(i){return cardHTML('comida',i,sub(i),cnt(i.id))}).join('')+newCard('comida','Nueva comida')+'</div></div>'+
+   '<div><span class="glabel">Mis tarjetas · '+st.momento+'</span><div class="cgrid" style="margin-top:6px">'+items.map(function(i){return cardHTML('comida',i,sub(i),cnt(i.id))}).join('')+'</div>'+(items.length?'':'<p class="sub">Aún no tienes tarjetas para '+esc(st.momento.toLowerCase())+'.</p>')+
+   '<div class="cgrid" style="margin-top:10px">'+newCard('prod','Nuevo producto')+newCard('comida','Nueva comida')+'</div></div>'+
    closeRow('Listo');
  },
  gym:function(st){
@@ -1065,7 +1070,7 @@ var VIEWS={
    '<div><span class="glabel">Toca una para registrarla · '+st.tipo+'</span><div class="cgrid" style="margin-top:6px">'+items.map(function(i){return cardHTML('molestia',i,'',cnt(i))}).join('')+newCard('molestia','Nueva molestia')+'</div></div>'+closeRow('Listo');
  },
  prod:function(st){
-  return prodForm('np',st.np,false)+errP()+(st.np.id&&st.np.confirm?'<p class="err">¿Eliminar este producto? Las tarjetas que lo usan conservan sus macros.</p>':'')+
+  return prodForm('np',st.np)+errP()+(st.np.id&&st.np.confirm?'<p class="err">¿Eliminar este producto? Las tarjetas que lo usan conservan sus macros.</p>':'')+
    '<div class="actions"><button type="button" class="ghost" data-close>Cancelar</button>'+(st.np.id?'<button type="button" class="ghost danger" data-save="prod:del">'+(st.np.confirm?'Sí, eliminar':'Eliminar')+'</button>':'')+'<button type="button" class="primary" data-save="prod:save">Guardar</button></div>';
  },
  pulso:function(st){
@@ -1080,8 +1085,7 @@ function edActions(kind,d){
 }
 function comidaEditor(st){
  var d=st.ed;syncIngs(d);var auto=useIngs(d);
- return '<h3>'+(d.id?'Editar tarjeta':'Nueva tarjeta')+'</h3>'+iconRow(d,true)+
-  fld('ed.nombre','Nombre',{t:'text',ph:'Pollo con arroz'})+
+ return '<h3>'+(d.id?'Editar tarjeta':'Nueva tarjeta')+'</h3>'+iconRow(d,'ed.nombre','Pollo con arroz')+
   '<div><span class="glabel">Aparece en</span><div style="height:6px"></div>'+togB('ed.momentos',MOMENTOS,d.momentos)+'</div>'+
   ingSection(d)+
   '<div class="grid2">'+fld('ed.kcal','Calorías',{unit:'kcal',ph:'auto',dis:auto})+fld('ed.p','Proteína',{unit:'g',dis:auto})+fld('ed.c','Carbohidratos',{unit:'g',dis:auto})+fld('ed.g','Grasa',{unit:'g',dis:auto})+'</div>'+
@@ -1091,14 +1095,12 @@ function comidaEditor(st){
 }
 function supleEditor(st){
  var d=st.ed;
- return '<h3>'+(d.id?'Editar suplemento':'Nuevo suplemento')+'</h3>'+iconRow(d,false)+
-  fld('ed.nombre','Nombre',{t:'text',ph:'Omega 3'})+edActions('suple',d)+
+ return '<h3>'+(d.id?'Editar suplemento':'Nuevo suplemento')+'</h3>'+iconRow(d,'ed.nombre','Omega 3')+edActions('suple',d)+
   '<div class="actions"><button type="button" class="primary" data-save="suple:card">Guardar</button>'+(d.id?'<button type="button" class="ghost danger" data-save="suple:del">'+(d.confirm?'Sí, eliminar':'Eliminar')+'</button>':'')+'<button type="button" class="ghost" data-save="suple:back">Volver</button></div>';
 }
 function molestEditor(st){
  var d=st.ed;
- return '<h3>'+(d.id?'Editar molestia':'Nueva molestia')+'</h3>'+iconRow(d,false)+
-  fld('ed.nombre','Nombre',{t:'text',ph:'Dolor de rodilla'})+'<div><span class="glabel">Tipo</span><div style="height:6px"></div>'+segB('ed.tipo',['Físico','Digestivo','Enfermedad'],d.tipo)+'</div>'+edActions('molestia',d)+
+ return '<h3>'+(d.id?'Editar molestia':'Nueva molestia')+'</h3>'+iconRow(d,'ed.nombre','Dolor de rodilla')+'<div><span class="glabel">Tipo</span><div style="height:6px"></div>'+segB('ed.tipo',['Físico','Digestivo','Enfermedad'],d.tipo)+'</div>'+edActions('molestia',d)+
   '<div class="actions"><button type="button" class="primary" data-save="molestia:card">Guardar</button>'+(d.id?'<button type="button" class="ghost danger" data-save="molestia:del">'+(d.confirm?'Sí, eliminar':'Eliminar')+'</button>':'')+'<button type="button" class="ghost" data-save="molestia:back">Volver</button></div>';
 }
 
@@ -1110,15 +1112,17 @@ function useIngs(d){return !!(d&&d.ings&&d.ings.length&&d.ings.every(function(i)
 function ingTotals(ings){var t={kcal:0,p:0,c:0,g:0};(ings||[]).forEach(function(i){var r=prodCalc(findProd(i.pid),i.cant);['kcal','p','c','g'].forEach(function(k){t[k]+=r[k]})});return t}
 function syncIngs(d){if(!useIngs(d))return;var t=ingTotals(d.ings);d.kcal=Math.round(t.kcal);d.p=r1(t.p);d.c=r1(t.c);d.g=r1(t.g)}
 function macroLine(r){return fmt(Math.round(r.kcal))+' kcal · P '+fmt(r1(r.p))+' · C '+fmt(r1(r.c))+' · G '+fmt(r1(r.g))}
-function ingLine(pr,cant){if(!pr)return 'ya no está en tu catálogo';if(!(numv(cant)>0))return 'escribe cuánto usas';return macroLine(prodCalc(pr,cant))}
+function ingLine(pr,cant){if(!pr)return 'ya no está en tu catálogo';if(!(numv(cant)>0))return 'escribe '+cuantos(pr.unidad)+' usas';return macroLine(prodCalc(pr,cant))}
 function prodSub(pr){return 'por '+fmt(pr.base)+' '+pr.unidad+' · '+fmt(pr.kcal||0)+' kcal · P '+fmt(pr.p||0)+' · C '+fmt(pr.c||0)+' · G '+fmt(pr.g||0)}
-function npDraft(pr){pr=pr||{};var nv=function(v){return v==null?'':v};return {id:pr.id||null,nombre:pr.nombre||'',base:pr.base||100,unidad:pr.unidad||'g',kcal:nv(pr.kcal),p:nv(pr.p),c:nv(pr.c),g:nv(pr.g),uso:'',confirm:false}}
-function prodForm(path,np,withUso){
+function npDraft(pr){pr=pr||{};var nv=function(v){return v==null?'':v};return {id:pr.id||null,nombre:pr.nombre||'',base:pr.base||100,unidad:pr.unidad||'g',kcal:nv(pr.kcal),p:nv(pr.p),c:nv(pr.c),g:nv(pr.g),confirm:false}}
+function uName(u){return u==='g'?'gramos':u==='ml'?'ml':'unidades'}
+function cuantos(u){return u==='unid'?'cuántas unidades':'cuántos '+uName(u)}
+function prodForm(path,np){
  return '<div class="pbox"><h3>'+(np.id?'Editar producto':'Nuevo producto')+'</h3>'+fld(path+'.nombre','Nombre',{t:'text',ph:'Granola'})+
-  '<div class="grid2">'+fld(path+'.base','La tabla viene por',{unit:np.unidad,ph:'100'})+'<div class="fld"><span>Unidad</span>'+segB(path+'.unidad',['g','ml'],np.unidad)+'</div></div>'+
+  '<div class="grid2">'+fld(path+'.base','La tabla viene por',{unit:np.unidad,ph:'100'})+'<div class="fld"><span>Unidad</span>'+segB(path+'.unidad',[['g','g'],['ml','ml'],['unid','unidades']],np.unidad)+'</div></div>'+
   '<div class="grid2">'+fld(path+'.kcal','Calorías',{unit:'kcal',ph:'auto'})+fld(path+'.p','Proteína',{unit:'g'})+fld(path+'.c','Carbohidratos',{unit:'g'})+fld(path+'.g','Grasa',{unit:'g'})+'</div>'+
   '<p class="sub">Copia los números tal como vienen en la etiqueta para esa porción. Si dejas las calorías vacías, se calculan con los macros.</p>'+
-  (withUso?fld(path+'.uso','¿Cuánto usas en este platillo?',{unit:np.unidad,ph:'30'}):'')+'</div>';
+  '</div>';
 }
 function prodFromDraft(np){
  var nm=(np.nombre||'').trim(),b=numv(np.base),p=numv(np.p),c=numv(np.c),g=numv(np.g),k=numv(np.kcal);
@@ -1126,7 +1130,7 @@ function prodFromDraft(np){
  if(!(b>0))return {err:'Escribe la porción de la tabla, por ejemplo 100.'};
  if(k==null&&(p!=null||c!=null||g!=null))k=Math.round(4*(p||0)+4*(c||0)+9*(g||0));
  if(k==null)return {err:'Escribe las calorías o al menos un macro del producto.'};
- return {item:{nombre:nm,base:b,unidad:np.unidad==='ml'?'ml':'g',kcal:k,p:p,c:c,g:g}};
+ return {item:{nombre:nm,base:b,unidad:['g','ml','unid'].indexOf(np.unidad)>-1?np.unidad:'g',kcal:k,p:p,c:c,g:g}};
 }
 function upsertProd(np){
  var r=prodFromDraft(np);if(r.err)return r;
@@ -1142,7 +1146,7 @@ function ingSection(d){
    '<button type="button" class="x" data-ingdel="'+n+'" aria-label="Quitar '+esc(pr?pr.nombre:'producto')+'">×</button></div>'}).join('');
  var tot=rows&&useIngs(d)?'<div class="ingtot" id="ingTot">'+esc('Total: '+macroLine(ingTotals(d.ings)))+'</div>':'';
  var pick;
- if(d.np)pick=prodForm('ed.np',d.np,true)+'<div class="actions"><button type="button" class="primary small" data-save="comida:npsave">Guardar producto</button><button type="button" class="ghost small" data-save="comida:npcancel">Cancelar</button></div>';
+ if(d.np)pick=prodForm('ed.np',d.np)+'<div class="actions"><button type="button" class="primary small" data-save="comida:npsave">Guardar producto</button><button type="button" class="ghost small" data-save="comida:npcancel">Cancelar</button></div>';
  else if(d.pick){
   var list=db.prods.slice().sort(function(a,b){return a.nombre.localeCompare(b.nombre,'es')});
   pick='<div class="pbox"><span class="glabel">Toca un producto para agregarlo</span>'+(list.length>6?'<span class="inp"><input id="pq" type="text" placeholder="Buscar producto" autocomplete="off" aria-label="Buscar producto"></span>':'')+
@@ -1270,7 +1274,7 @@ function edComidaItem(){
  if(k==null&&(p!=null||c!=null||g!=null))k=Math.round(4*(p||0)+4*(c||0)+9*(g||0));
  var ings=(d.ings||[]).map(function(i){return {pid:i.pid,cant:numv(i.cant)}}),cant=(d.cant||'').trim();
  if(useIngs(d))cant=ings.map(function(i){var pr=findProd(i.pid);return pr.nombre+' '+fmt(i.cant||0)+' '+pr.unidad}).join(' · ');
- return {id:d.id,nombre:(d.nombre||'').trim(),cant:cant,momentos:d.momentos.slice(),kcal:k,p:p,c:c,g:g,emoji:d.emoji||'🍽️',photo:d.photo||'',ings:ings};
+ return {id:d.id,nombre:(d.nombre||'').trim(),cant:cant,momentos:d.momentos.slice(),kcal:k,p:p,c:c,g:g,emoji:d.emoji||'🍽️',photo:'',ings:ings};
 }
 
 /* guardado */
@@ -1308,15 +1312,18 @@ function doSave(name){
   else ne.int=st.int;
   put(ne);closeSheet();toast('Registro actualizado');return}
  if(kind==='comida'){
+  if(act==='pncancel'){st.np=null;drawSheet();$('#sheetForm').scrollTop=0;return}
+  if(act==='pnsave'){var rp=upsertProd(st.np);if(rp.err){st.err=rp.err;return drawSheet()}st.np=null;toast('Producto guardado: '+rp.prod.nombre);drawSheet();$('#sheetForm').scrollTop=0;return}
   if(act==='back'){st.ed=null;return drawSheet()}
   if(act==='del'){var d0=st.ed;if(!d0.confirm){d0.confirm=true;return drawSheet()}db.lib=db.lib.filter(function(i){return i.id!==d0.id});persist();st.ed=null;toast('Tarjeta eliminada');return drawSheet()}
   if(act==='npcancel'){st.ed.np=null;return drawSheet()}
   if(act==='npsave'){var rr=upsertProd(st.ed.np);if(rr.err){st.err=rr.err;return drawSheet()}
-   var uso=numv(st.ed.np.uso);if(!st.ed.np.id)st.ed.ings.push({pid:rr.prod.id,cant:uso>0?uso:''});
-   st.ed.np=null;st.ed.pick=false;syncIngs(st.ed);toast('Producto guardado: '+rr.prod.nombre);return drawSheet()}
+   var nuevo=!st.ed.np.id;if(nuevo)st.ed.ings.push({pid:rr.prod.id,cant:''});
+   st.ed.np=null;st.ed.pick=false;syncIngs(st.ed);toast('Producto guardado: '+rr.prod.nombre);drawSheet();
+   if(nuevo){var fi=document.querySelector('[data-b="ed.ings.'+(st.ed.ings.length-1)+'.cant"]');if(fi)try{fi.focus()}catch(_){}}return}
   if(st.ed.np){st.err='Primero guarda o cancela el producto nuevo.';return drawSheet()}
   var falta=(st.ed.ings||[]).filter(function(i){return findProd(i.pid)&&!(numv(i.cant)>0)})[0];
-  if(falta){var fp=findProd(falta.pid);st.err='Escribe cuántos '+fp.unidad+' de '+fp.nombre+' usas.';return drawSheet()}
+  if(falta){var fp=findProd(falta.pid);st.err='Escribe '+cuantos(fp.unidad)+' de '+fp.nombre+' usas.';return drawSheet()}
   var it=edComidaItem();
   if(!it.nombre){st.err='Escribe el nombre de la comida.';return drawSheet()}
   if(it.kcal==null){st.err='Escribe las calorías o al menos un macro.';return drawSheet()}
@@ -1362,7 +1369,7 @@ document.addEventListener('click',function(e){
  else if(d.pick&&st){
   var v=d.n?+d.val:d.val;setP(st,d.pick,v);st.err='';
   if(SH.kind==='gym'&&d.pick==='rutina'){gymFor(st,v);gymMerge(st)}
-  if(d.pick==='ed.emoji')st.ed.photo='';
+  if(/(^|\.)np\.unidad$/.test(d.pick)){var npo=getP(st,d.pick.replace(/\.unidad$/,''));if(v==='unid'&&+npo.base===100)npo.base=1;else if(v!=='unid'&&+npo.base===1)npo.base=100}
   if(SH.kind==='molestia'&&d.pick==='tipo')st.ed=null;
   drawSheet()}
  else if(d.tog&&st){var arr=getP(st,d.tog),ix=arr.indexOf(d.val);if(ix>-1)arr.splice(ix,1);else arr.push(d.val);drawSheet()}
@@ -1384,7 +1391,8 @@ document.addEventListener('click',function(e){
   else if(k2==='suple'){var s0=findLib(db.suples,d.id);if(s0){st.ed={id:s0.id,nombre:s0.nombre,emoji:s0.emoji,confirm:false};drawSheet();$('#sheetForm').scrollTop=0}}
   else if(k2==='molestia'){var m0=d.rid!=null?SH.recents[+d.rid]:findLib(db.molest,d.id);if(m0){st.ed={id:m0.id||null,nombre:m0.nombre,tipo:m0.tipo,emoji:m0.emoji,confirm:false};drawSheet();$('#sheetForm').scrollTop=0}}}
  else if(d.cardnew&&st){
-  if(d.cardnew==='comida')st.ed=edFromComida({nombre:'',momentos:[st.momento]});
+  if(d.cardnew==='prod')st.np=npDraft();
+  else if(d.cardnew==='comida')st.ed=edFromComida({nombre:'',momentos:[st.momento]});
   else if(d.cardnew==='suple')st.ed={id:null,nombre:'',emoji:'💊',confirm:false};
   else st.ed={id:null,nombre:'',tipo:st.tipo,emoji:'⚠️',confirm:false};
   st.err='';drawSheet();$('#sheetForm').scrollTop=0}
@@ -1432,7 +1440,7 @@ function act(a){
 document.addEventListener('input',function(e){
  var t=e.target;if(!SH)return;var st=SH.st;
  if(t.id==='shTime'){if(t.value){SH.time=t.value;var nt=$('#dayNoteT');if(nt)nt.textContent=t.value}return}
- if(t.id==='emoIn'&&SH.st.ed){if(e.isComposing)return;var gx=lastGrapheme(t.value);if(gx){SH.st.ed.emoji=gx;SH.st.ed.photo='';if(t.value!==gx)t.value=gx;var eb=$('#emoBig');if(eb)eb.innerHTML=mediaHTML(SH.st.ed)}return}
+ if(t.id==='emoIn'&&SH.st.ed){if(e.isComposing)return;var gx=lastGrapheme(t.value);if(gx){SH.st.ed.emoji=gx;SH.st.ed.photo='';if(t.value!==gx)t.value=gx}return}
  if(t.id==='pq'){var q=(t.value||'').trim().toLowerCase();$$('[data-ingadd]').forEach(function(b){b.hidden=!!q&&b.dataset.pname.indexOf(q)<0});return}
  if(t.dataset.b){setP(st,t.dataset.b,t.value);if(t.dataset.b.indexOf('ed.ings.')===0)updIngs()}
  else if(t.dataset.bm){st.w[t.dataset.bm]=t.value;refreshGym(t.dataset.bm)}
