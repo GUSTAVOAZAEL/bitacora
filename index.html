@@ -329,7 +329,15 @@ input[type=number]{-moz-appearance:textfield}
 #sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-height:92%;display:flex;flex-direction:column;background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--line);
   padding:16px max(16px,env(safe-area-inset-left,0px)) calc(16px + env(safe-area-inset-bottom,0px))}
 #sheet .in{width:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px;min-height:0;flex:1 1 auto}
-#sheet header{display:flex;justify-content:space-between;align-items:center}
+#sheet header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#sheet header h2{flex:0 1 auto;min-width:0;margin-right:auto}
+.crono{display:flex;align-items:center;gap:6px;flex:none}
+.crono:not([hidden])+#sheetClose{margin-left:auto}
+.cronot{min-width:92px;height:44px;padding:0 10px;border:1px solid var(--line);background:var(--soft);color:var(--fg);border-radius:12px;font:600 22px var(--mono);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.cronot.pause{background:transparent;color:var(--muted);border-style:dashed}
+.cronor{width:44px;height:44px;padding:0;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:12px;display:flex;align-items:center;justify-content:center}
+.cronor svg{width:20px;height:20px}
+.cronor.spin svg{animation:spin .5s ease-in-out}
 #sheetClose{width:44px;height:44px;padding:0;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:12px;display:flex;align-items:center;justify-content:center}
 #sheetClose svg{width:24px;height:24px}
 .cat-top{position:sticky;top:0;z-index:2;background:var(--surface);display:flex;flex-direction:column;gap:10px;padding-bottom:8px;box-shadow:0 1px 0 var(--line)}
@@ -433,7 +441,7 @@ details.dsec[open] .chev{transform:rotate(-135deg);margin-top:4px}
 <div id="scrim" hidden></div>
 <section id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
   <div class="in">
-    <header><h2 id="sheetTitle"></h2><button id="sheetClose" type="button" aria-label="Volver"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></header>
+    <header><h2 id="sheetTitle"></h2><div id="crono" class="crono" hidden><button type="button" id="cronoT" class="cronot" aria-label="Pausar o reanudar cronómetro">00:00</button><button type="button" id="cronoR" class="cronor" aria-label="Reiniciar cronómetro"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v5h5"/></svg></button></div><button id="sheetClose" type="button" aria-label="Volver"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></header>
     <div id="sheetForm"></div>
   </div>
 </section>
@@ -1454,12 +1462,25 @@ function recentMolest(){
 function findLib(arr,id){for(var i=0;i<arr.length;i++)if(arr[i].id===id)return arr[i];return null}
 
 /* abrir y cerrar */
+/* cronómetro del gym: se basa en la hora real, sigue contando con la pantalla bloqueada o la hoja cerrada */
+var CR={start:null,acc:0,run:false},crTick=null;
+try{var cr0=JSON.parse(localStorage.getItem('bitacora-crono')||'null');if(cr0&&typeof cr0==='object')CR=Object.assign(CR,cr0)}catch(_){}
+function crSave(){try{localStorage.setItem('bitacora-crono',JSON.stringify(CR))}catch(_){}}
+function crMs(){return CR.acc+(CR.run&&CR.start?Date.now()-CR.start:0)}
+function crFmt(ms){var t=Math.floor(ms/1000),h=Math.floor(t/3600),m=Math.floor(t/60)%60,s0=t%60;return (h?h+':'+pad(m):pad(m))+':'+pad(s0)}
+function crDraw(){var b=$('#cronoT');if(!b)return;b.textContent=crFmt(crMs());b.classList.toggle('pause',!CR.run)}
+function crShow(on){var c=$('#crono');if(!c)return;c.hidden=!on;clearInterval(crTick);crTick=null;if(on){if(!CR.run&&!CR.acc){CR.run=true;CR.start=Date.now();crSave()}crDraw();crTick=setInterval(crDraw,250)}}
+function crToggle(){if(CR.run){CR.acc=crMs();CR.run=false;CR.start=null}else{CR.run=true;CR.start=Date.now()}crSave();crDraw()}
+function crReset(){CR.acc=0;CR.run=true;CR.start=Date.now();crSave();crDraw();var r=$('#cronoR');if(r){r.classList.remove('spin');void r.offsetWidth;r.classList.add('spin')}}
+$('#cronoT').addEventListener('click',crToggle);
+$('#cronoR').addEventListener('click',crReset);
 function openSheet(kind,st,opt){
  opt=opt||{};
  SH={kind:kind,st:st||INIT[kind](),live:(kind==='comida'||kind==='suple'||kind==='molestia'),day:opt.day||'',time:opt.time||'',editId:opt.editId||null};
  if(kind==='sueno'&&!opt.editId&&SH.st.fecha==='ayer')SH.day=dayKeyOff(1);
  var TT=TYPES[kind.replace('e_','')];$('#sheetTitle').textContent=kind==='tema'?'Tema':(SH.editId?'Editar · ':'')+(TT?TT.n:'Producto');
  lockBody();$('#scrim').hidden=false;$('#sheet').hidden=false;fitSheet();
+ crShow(kind==='gym'&&!opt.editId);
  drawSheet();$('#sheetForm').scrollTop=0;
  try{$('#sheetClose').focus({preventScroll:true})}catch(e){}
 }
@@ -1472,7 +1493,7 @@ function fitSheet(){
  sh.style.bottom=kb+'px';sh.style.maxHeight=Math.round(vv.height*(kb>40?.97:.92))+'px';
 }
 if(window.visualViewport){window.visualViewport.addEventListener('resize',fitSheet);window.visualViewport.addEventListener('scroll',fitSheet)}
-function closeSheet(){SH=null;$('#scrim').hidden=true;$('#sheet').hidden=true;$('#sheetForm').innerHTML='';var sh=$('#sheet');sh.style.bottom='';sh.style.maxHeight='';unlockBody()}
+function closeSheet(){crShow(false);SH=null;$('#scrim').hidden=true;$('#sheet').hidden=true;$('#sheetForm').innerHTML='';var sh=$('#sheet');sh.style.bottom='';sh.style.maxHeight='';unlockBody()}
 /* Con el teclado abierto, iOS mueve la hoja al cerrarlo y el toque cae fuera del botón: se activa el botón al soltar el dedo */
 var tapB=null,tapX=0,tapY=0;
 document.addEventListener('touchstart',function(e){
