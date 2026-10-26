@@ -338,6 +338,9 @@ input[type=number]{-moz-appearance:textfield}
 .cronor{width:44px;height:44px;padding:0;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:12px;display:flex;align-items:center;justify-content:center}
 .cronor svg{width:20px;height:20px}
 .cronor.spin svg{animation:spin .5s ease-in-out}
+#cronoP svg{width:18px;height:18px}
+#cronoP[data-st="false"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+@media (max-width:380px){.cronot{min-width:76px;font-size:19px;padding:0 6px}.crono{gap:4px}.cronor{width:40px}}
 #sheetClose{width:44px;height:44px;padding:0;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:12px;display:flex;align-items:center;justify-content:center}
 #sheetClose svg{width:24px;height:24px}
 .cat-top{position:sticky;top:0;z-index:2;background:var(--surface);display:flex;flex-direction:column;gap:10px;padding-bottom:8px;box-shadow:0 1px 0 var(--line)}
@@ -394,6 +397,7 @@ select{min-height:44px;border:1px solid var(--line);background:var(--bg);color:v
 .mealrow{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0}
 .mealrow .bar{margin-top:0}
 .chipx{display:inline-flex;gap:6px;align-items:center}
+details.cdbox>summary .cdok{font:600 12px var(--mono);color:var(--ok);margin-left:6px;letter-spacing:0;text-transform:none}
 .hoyt{font:500 12.5px/1.2 var(--body);letter-spacing:.01em;text-transform:none;margin:4px 0 0;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .head{min-height:50px}
 .headl{display:flex;flex-direction:column;justify-content:flex-end;min-width:0;height:50px}
@@ -441,7 +445,7 @@ details.dsec[open] .chev{transform:rotate(-135deg);margin-top:4px}
 <div id="scrim" hidden></div>
 <section id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
   <div class="in">
-    <header><h2 id="sheetTitle"></h2><div id="crono" class="crono" hidden><button type="button" id="cronoT" class="cronot" aria-label="Pausar o reanudar cronómetro">00:00</button><button type="button" id="cronoR" class="cronor" aria-label="Reiniciar cronómetro"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v5h5"/></svg></button></div><button id="sheetClose" type="button" aria-label="Volver"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></header>
+    <header><h2 id="sheetTitle"></h2><div id="crono" class="crono" hidden><button type="button" id="cronoT" class="cronot" aria-label="Pausar o reanudar cronómetro">00:00</button><button type="button" id="cronoP" class="cronor" aria-label="Pausar cronómetro"></button><button type="button" id="cronoR" class="cronor" aria-label="Reiniciar cronómetro"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v5h5"/></svg></button></div><button id="sheetClose" type="button" aria-label="Volver"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></header>
     <div id="sheetForm"></div>
   </div>
 </section>
@@ -599,7 +603,7 @@ function describe(e){
   case 'gym':{var ps=Object.keys(e.pesos||{}).map(function(k){return k+' '+fmt(e.pesos[k])+' kg'+((e.prs||[]).indexOf(k)>-1?' ★PR':'')});
     var mood=e.animoGym?GYMOOD[e.animoGym-1]:null;
     var wh=(e.tags||[]).concat(e.nota?['“'+e.nota+'”']:[]).join(' · ');
-    return {t:e.rutina+' · '+e.horario+(mood?' · '+mood.l:'')+(e.parcial?' · en curso':''),s:ps.join(' · '),n:wh?'Qué pasó: '+wh:''}}
+    return {t:e.rutina+' · '+e.horario+(mood?' · '+mood.l:'')+(e.parcial?' · en curso':''),s:ps.concat(e.cardio?[cdText(e.cardio)]:[]).join(' · '),n:wh?'Qué pasó: '+wh:''}}
   case 'sueno':return {t:fmtH(e.h),s:(e.ini&&e.fin?clock12(clockMin(e.ini))+' → '+clock12(clockMin(e.fin))+' · ':'')+(e.bloque||'')};
   case 'suple':return {t:e.item,s:e.momento};
   case 'animo':return {t:(ANIMO[e.nivel-1]||{l:'Ánimo'}).l,s:(e.tags||[]).concat(e.nota?[e.nota]:[]).join(' · ')};
@@ -1067,9 +1071,11 @@ var INIT={
 
 /* ----- gym ----- */
 function gymInit(){
- var st={horario:horarioDef(),animoGym:0,addG:null,newM:'',tags:[],nota:'',tagKey:'gtags',tagEdit:false,editing:null,editVal:'',adding:false,newTag:'',err:'',sid:null};
+ var lc=lastCardio();
+ var st={horario:horarioDef(),animoGym:0,addG:null,newM:'',tags:[],nota:'',tagKey:'gtags',tagEdit:false,editing:null,editVal:'',adding:false,newTag:'',err:'',sid:null,cd:{min:'',vel:lc&&lc.vel!=null?lc.vel:'',inc:lc&&lc.inc!=null?lc.inc:''}};
  var open=sorted().filter(function(e){return e.type==='gym'&&e.parcial&&dk(e.ts)===today()})[0];
  if(open){
+  if(open.cardio)st.cd={min:open.cardio.min,vel:open.cardio.vel!=null?open.cardio.vel:'',inc:open.cardio.inc!=null?open.cardio.inc:''};
   st.sid=open.id;st.horario=open.horario||st.horario;st.animoGym=open.animoGym||0;st.tags=(open.tags||[]).slice();st.nota=open.nota||'';
   gymFor(st,open.rutina);gymMerge(st);return st;
  }
@@ -1090,6 +1096,24 @@ function refreshGym(m){
  var row=document.querySelector('[data-mrow="'+CSS.escape(m)+'"]');
  if(row){row.classList.toggle('done',ok);var b=row.querySelector('.sv');if(b){b.classList.toggle('ok',ok);b.setAttribute('aria-label',(ok?'Guardado: ':'Guardar ')+m)}}
  var c=$('#gcnt');if(c)c.innerHTML=gymCountHTML(st);
+}
+function cdVals(st){var c=st.cd||{};return {min:numv(c.min),vel:numv(c.vel),inc:numv(c.inc)}}
+function cdObj(st){var v=cdVals(st);if(!(v.min>0))return null;var o={min:v.min};if(v.vel!=null)o.vel=v.vel;if(v.inc!=null)o.inc=v.inc;return o}
+function cdSaved(st){var e=gymSession(st),o=cdObj(st);return !!(e&&e.cardio&&o&&e.cardio.min===o.min&&e.cardio.vel===o.vel&&e.cardio.inc===o.inc)}
+function cdText(c){if(!c)return '';return 'Cardio '+fmt(c.min)+' min'+(c.vel!=null?' · '+fmt(c.vel)+' km/h':'')+(c.inc!=null?' · '+fmt(c.inc)+'% incl.':'')}
+function lastCardio(){var e=sorted().filter(function(x){return x.type==='gym'&&x.cardio})[0];return e?e.cardio:null}
+function cardioBlock(st){
+ var ok=cdSaved(st),c=st.cd||{};
+ return '<details class="cdbox"'+(st.cdOpen||c.min?' open':'')+' id="cdDet"><summary>Cardio'+(ok?' <span class="cdok">✓ guardado</span>':'')+'</summary><div class="stack" style="gap:8px">'+
+  '<div class="grid3">'+fld('cd.min','Tiempo',{unit:'min',ph:'20'})+fld('cd.vel','Velocidad',{unit:'km/h',ph:'6'})+fld('cd.inc','Inclinación',{unit:'%',ph:'5'})+'</div>'+
+  '<button type="button" class="'+(ok?'primary':'ghost')+' small" data-act="cdsave" style="align-self:flex-start">'+(ok?'✓ Cardio guardado':'Guardar cardio')+'</button></div></details>';
+}
+function saveCardio(){
+ var st=SH.st,o=cdObj(st);st.err='';
+ if(!o){st.err='Escribe cuántos minutos de cardio hiciste.';return drawSheet()}
+ var e=gymSession(st);
+ if(!e){e=add({type:'gym',rutina:st.rutina,horario:st.horario,pesos:{},parcial:true});st.sid=e.id}
+ gymMeta(e,st);e.cardio=o;persist();renderAll();toast(cdText(o)+' guardado');drawSheet();
 }
 function gymMeta(e,st){
  e.rutina=st.rutina;e.horario=st.horario;
@@ -1234,6 +1258,7 @@ var VIEWS={
   return '<span class="glabel">Rutina</span>'+segB('rutina',RUTINAS,st.rutina)+'<span class="glabel">Horario</span>'+segB('horario',['Mañana','Tarde','Noche'],st.horario)+
    '<span class="glabel">¿Cómo te fue en el gym?</span><div class="moods m4">'+GYMOOD.map(function(m,i){return '<button type="button" class="mood'+(st.animoGym===i+1?' on':'')+'" data-pick="animoGym" data-val="'+(i+1)+'" data-n="1"><span class="emo">'+m.e+'</span>'+m.l+'</button>'}).join('')+'</div>'+
    (st.rutina==='Descanso'?'<p class="sub">Día de descanso: no se registran pesos.</p>':'<span class="glabel">Pesos (kg). Toca el nombre para activar un músculo y ✓ para guardarlo</span><div class="gcnt" id="gcnt">'+gymCountHTML(st)+'</div>'+groups)+
+   cardioBlock(st)+
    tagBlock(st,'gtags','Qué pasó en el gym')+fld('nota','Nota (opcional)',{t:'text'})+errP()+'<div class="actions"><button type="button" class="ghost" data-close>Cancelar</button><button type="button" class="primary" data-save="gym:ok">'+(gymSession(st)&&!SH.editId?'Terminar y guardar':'Guardar')+'</button></div>';
  },
  sueno:function(st){
@@ -1468,11 +1493,14 @@ try{var cr0=JSON.parse(localStorage.getItem('bitacora-crono')||'null');if(cr0&&t
 function crSave(){try{localStorage.setItem('bitacora-crono',JSON.stringify(CR))}catch(_){}}
 function crMs(){return CR.acc+(CR.run&&CR.start?Date.now()-CR.start:0)}
 function crFmt(ms){var t=Math.floor(ms/1000),h=Math.floor(t/3600),m=Math.floor(t/60)%60,s0=t%60;return (h?h+':'+pad(m):pad(m))+':'+pad(s0)}
-function crDraw(){var b=$('#cronoT');if(!b)return;b.textContent=crFmt(crMs());b.classList.toggle('pause',!CR.run)}
-function crShow(on){var c=$('#crono');if(!c)return;c.hidden=!on;clearInterval(crTick);crTick=null;if(on){if(!CR.run&&!CR.acc){CR.run=true;CR.start=Date.now();crSave()}crDraw();crTick=setInterval(crDraw,250)}}
-function crToggle(){if(CR.run){CR.acc=crMs();CR.run=false;CR.start=null}else{CR.run=true;CR.start=Date.now()}crSave();crDraw()}
-function crReset(){CR.acc=0;CR.run=true;CR.start=Date.now();crSave();crDraw();var r=$('#cronoR');if(r){r.classList.remove('spin');void r.offsetWidth;r.classList.add('spin')}}
+var IC_PAUSE='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>',IC_PLAY='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" style="fill:currentColor"/></svg>';
+function crDraw(){var b=$('#cronoT');if(!b)return;b.textContent=crFmt(crMs());b.classList.toggle('pause',!CR.run);var pb=$('#cronoP');if(pb&&pb.dataset.st!==String(CR.run)){pb.dataset.st=String(CR.run);pb.innerHTML=CR.run?IC_PAUSE:IC_PLAY;pb.setAttribute('aria-label',CR.run?'Pausar cronómetro':'Reanudar cronómetro')}}
+function crStop(){CR.acc=0;CR.run=false;CR.start=null;CR.done=today();crSave();crDraw()}
+function crShow(on){var c=$('#crono');if(!c)return;c.hidden=!on;clearInterval(crTick);crTick=null;if(on){if(!CR.run&&!CR.acc&&CR.done!==today()){CR.run=true;CR.start=Date.now();crSave()}crDraw();crTick=setInterval(crDraw,250)}}
+function crToggle(){CR.done=false;if(CR.run){CR.acc=crMs();CR.run=false;CR.start=null}else{CR.run=true;CR.start=Date.now()}crSave();crDraw()}
+function crReset(){CR.done=false;CR.acc=0;CR.run=true;CR.start=Date.now();crSave();crDraw();var r=$('#cronoR');if(r){r.classList.remove('spin');void r.offsetWidth;r.classList.add('spin')}}
 $('#cronoT').addEventListener('click',crToggle);
+$('#cronoP').addEventListener('click',crToggle);
 $('#cronoR').addEventListener('click',crReset);
 function openSheet(kind,st,opt){
  opt=opt||{};
@@ -1533,7 +1561,7 @@ function openEdit(id){
  else if(kind==='pulso')st={reposo:nv(e.reposo),prom:nv(e.prom),max:nv(e.max),err:''};
  else if(kind==='animo')st=Object.assign({nivel:e.nivel,tags:(e.tags||[]).slice(),nota:e.nota||'',tagKey:'tags'},tagst);
  else if(kind==='gym'){var sel={},w={};Object.keys(e.pesos||{}).forEach(function(m){sel[m]=true;w[m]=e.pesos[m]});
-  st=Object.assign({rutina:e.rutina,horario:e.horario||'Tarde',animoGym:e.animoGym||0,sel:sel,w:w,addG:null,newM:'',tags:(e.tags||[]).slice(),nota:e.nota||'',tagKey:'gtags',sid:id},tagst)}
+  st=Object.assign({rutina:e.rutina,horario:e.horario||'Tarde',animoGym:e.animoGym||0,sel:sel,w:w,addG:null,newM:'',tags:(e.tags||[]).slice(),nota:e.nota||'',tagKey:'gtags',sid:id,cd:{min:e.cardio?e.cardio.min:'',vel:e.cardio&&e.cardio.vel!=null?e.cardio.vel:'',inc:e.cardio&&e.cardio.inc!=null?e.cardio.inc:''}},tagst)}
  else if(kind==='sueno'){var fin=e.fin?clockMin(e.fin):clockMin(e.ts),ini=e.ini?clockMin(e.ini):(((fin-Math.round((e.h||0)*60))%1440)+1440)%1440;
   st={ini:ini,fin:fin,fecha:'hoy',drag:null,others:othersFor(k,id),err:''}}
  else if(kind==='comida'){kind='e_comida';st={nombre:e.nombre||'',cant:e.cant||'',momento:e.momento||'Comida',kcal:nv(e.kcal),p:nv(e.p),c:nv(e.c),g:nv(e.g),err:''}}
@@ -1592,12 +1620,12 @@ function doSave(name){
  if(kind==='gym'){
   var ps={},prs=[],tid=SH.editId||st.sid;
   if(st.rutina!=='Descanso'){Object.keys(st.sel).forEach(function(mu){if(!st.sel[mu])return;var w=numv(st.w[mu]);if(w!=null&&w>0){ps[mu]=w;var pm=maxWeight(mu,tid);if(pm>0&&w>pm)prs.push(mu)}});
-   if(!Object.keys(ps).length){st.err='Activa un músculo y escribe su peso, o elige Descanso.';return drawSheet()}}
-  var ge={type:'gym',rutina:st.rutina,horario:st.horario,pesos:ps};if(st.animoGym)ge.animoGym=st.animoGym;if(prs.length)ge.prs=prs;
+   if(!Object.keys(ps).length&&!cdObj(st)){st.err='Activa un músculo y escribe su peso, registra cardio o elige Descanso.';return drawSheet()}}
+  var ge={type:'gym',rutina:st.rutina,horario:st.horario,pesos:ps};var cdo=cdObj(st);if(cdo)ge.cardio=cdo;if(st.animoGym)ge.animoGym=st.animoGym;if(prs.length)ge.prs=prs;
   if(st.tags&&st.tags.length)ge.tags=st.tags.slice();if((st.nota||'').trim())ge.nota=st.nota.trim();
   var ses=!SH.editId&&gymSession(st);
   if(ses){ge.id=ses.id;ge.ts=ses.ts;db.entries=db.entries.map(function(x){return x.id===ses.id?ge:x});persist();renderAll()}else put(ge);
-  closeSheet();toast(prs.length?'¡PR en '+prs.join(', ')+'! '+prs.map(function(x){return fmt(ps[x])+' kg'}).join(', '):'Gym guardado');return}
+  var fin=!SH.editId;closeSheet();if(fin)crStop();toast(prs.length?'¡PR en '+prs.join(', ')+'! '+prs.map(function(x){return fmt(ps[x])+' kg'}).join(', '):'Gym guardado');return}
  if(kind==='sueno'){
   var dur=((st.fin-st.ini)%1440+1440)%1440;if(!dur){st.err='El inicio y el final son iguales.';return drawSheet()}
   var fd=parseKey(SH.day||today());fd.setHours(Math.floor(st.fin/60),st.fin%60,0,0);
@@ -1732,6 +1760,7 @@ function act(a){
  else if(a==='recover'){var ep=ongoingEp();if(ep){ep.fin=new Date().toISOString();persist();renderAll();if(SH&&SH.kind==='molestia')drawSheet();toast('Me alegra. Marqué tu recuperación.')}}
  else if(a==='pliston'&&st){st.pqv='';st.plist=true;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='plistoff'&&st){st.plist=false;drawSheet();$('#sheetForm').scrollTop=0}
+ else if(a==='cdsave'&&st&&SH.kind==='gym'){st.cdOpen=true;saveCardio()}
  else if(a==='prevlog'&&st&&st.prev){var pv=st.prev;logComida(pv,st.momento,1);toast(st.momento+': '+pv.nombre);st.prev=null;st.porc=1;drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='prevedit'&&st&&st.prev){st.ed=edFromComida(st.prev);st.prev=null;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='prevback'&&st){st.prev=null;st.porc=1;drawSheet();$('#sheetForm').scrollTop=0}
@@ -1762,6 +1791,7 @@ document.addEventListener('input',function(e){
  if(t.id==='pq'){var q=(t.value||'').trim().toLowerCase();SH.st.pqv=t.value;$$('[data-ingadd],[data-pedit]').forEach(function(b){b.hidden=!!q&&b.dataset.pname.indexOf(q)<0});return}
  if(t.dataset.b){setP(st,t.dataset.b,t.value);if(t.dataset.b.indexOf('ed.ings.')===0)updIngs()}
  else if(t.dataset.bm){st.w[t.dataset.bm]=t.value;refreshGym(t.dataset.bm)}
+ if(t.dataset.b&&t.dataset.b.indexOf('cd.')===0&&SH.kind==='gym'){var cb=$('[data-act="cdsave"]'),ok2=cdSaved(st);if(cb){cb.className=(ok2?'primary':'ghost')+' small';cb.textContent=ok2?'✓ Cardio guardado':'Guardar cardio'}}
  else if(t.id==='tIni'||t.id==='tFin'){var p=(t.value||'').split(':');if(p.length>=2&&p[0]!==''){var mm=(+p[0])*60+(+p[1]);if(!isNaN(mm)){if(t.id==='tIni')st.ini=mm;else st.fin=mm;updateRing()}}}
 });
 document.addEventListener('change',function(e){
@@ -1804,7 +1834,7 @@ document.addEventListener('pointermove',function(e){
 });
 function endDrag(){if(SH&&SH.kind==='sueno')SH.st.drag=null}
 document.addEventListener('pointerup',endDrag);document.addEventListener('pointercancel',endDrag);
-document.addEventListener('toggle',function(e){if(e.target&&e.target.classList&&e.target.classList.contains('dsec')){dOpen[e.target.id.slice(3)]=e.target.open;return}if(!SH||!e.target)return;if(e.target.id==='recDet')SH.st.recOpen=e.target.open;if(e.target.id==='filDet')SH.st.filOpen=e.target.open},true);
+document.addEventListener('toggle',function(e){if(e.target&&e.target.classList&&e.target.classList.contains('dsec')){dOpen[e.target.id.slice(3)]=e.target.open;return}if(!SH||!e.target)return;if(e.target.id==='cdDet')SH.st.cdOpen=e.target.open;if(e.target.id==='recDet')SH.st.recOpen=e.target.open;if(e.target.id==='filDet')SH.st.filOpen=e.target.open},true);
 document.addEventListener('keydown',function(e){
  if(e.key==='Escape'&&SH){closeSheet();return}
  var t=e.target;if((e.key==='Enter'||e.key===' ')&&t&&t.getAttribute&&t.getAttribute('role')==='button'&&t.dataset.open){e.preventDefault();openSheet(t.dataset.open)}
