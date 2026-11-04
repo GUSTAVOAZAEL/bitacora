@@ -705,7 +705,7 @@ function dayPanel(t,buttons,tap){
  var G=db.goals,rem=Math.round(G.ml-t.ml),ta=function(k,l){return tap?' tap" role="button" tabindex="0" data-open="'+k+'" aria-label="'+l+'"':'"'};
  return '<div class="dp"><div class="wcol'+ta('agua','Registrar agua')+'>'+(tap?'<span class="taphint">Agua</span>':'')+bottleSVG(t.ml,G.ml)+'<span class="v">'+fmt(t.ml)+'</span><span class="sub mono">de '+fmt(G.ml)+' ml</span><span class="sub"'+(rem>0?'':' style="color:var(--ok);font-weight:600"')+'>'+(rem>0?'Faltan '+fmt(rem):'Meta cumplida')+'</span>'+
   (buttons?'<button class="primary small" type="button" data-quick="vaso">+ '+fmt(db.vasoMl)+' ml</button><button class="ghost small" type="button" data-quick="500">+ 500 ml</button>':'')+'</div>'+
-  '<div class="mbars'+ta('comida','Registrar comida')+' style="gap:'+(tap?10:14)+'px">'+(tap?'<span class="taphint" style="margin-bottom:-6px">Comida</span>':'')+dayBars(t)+'</div></div>';
+  '<div class="mbars'+ta('comida','Registrar producto').replace('data-open="comida"','data-open="comida" data-qpfirst="1"')+' style="gap:'+(tap?10:14)+'px">'+(tap?'<span class="taphint" style="margin-bottom:-6px">Comida</span>':'')+dayBars(t)+'</div></div>';
 }
 function kcalRing(t){
  var G=db.goals,rem=Math.round(G.kcal-t.kcal),over=rem<0,r=52,C=2*Math.PI*r,pc=Math.min(1,G.kcal>0?t.kcal/G.kcal:0);
@@ -1436,7 +1436,7 @@ function catalog(st,mode){
   (list.length>6?'<span class="inp"><input id="pq" type="text" placeholder="Buscar producto" autocomplete="off" aria-label="Buscar producto"></span>':'')+
   (list.length>1?'<div class="chips">'+chip('az','A–Z')+chip('p','Proteína')+chip('c','Carbos')+chip('g','Grasas')+chip('kcal','kcal')+'</div>'+(sort!=='az'?baseSeg('pbase',pb,sort)+'<span class="mini">Más '+MNAME[sort]+' primero, '+(pb==='k'?'por cada 100 kcal':'por 100 g o ml (o por unidad)')+'</span>':''):'')+'</div>'+
   (list.length?'<div class="list">'+rows+'</div>':'<p class="empty">Aún no tienes productos. Crea el primero con su tabla nutrimental.</p>')+
-  '<div class="cat-bot"><div class="actions"><button type="button" class="ghost" data-act="'+(mode==='pick'?'pickoff':mode==='qp'?'qpickoff':'plistoff')+'">Volver</button><button type="button" class="primary" '+(mode==='pick'?'data-act="npnew"':'data-cardnew="prod"')+'>+ Nuevo producto</button></div></div>';
+  '<div class="cat-bot"><div class="actions"><button type="button" class="ghost" data-act="'+(mode==='pick'?'pickoff':mode==='qp'?'qpickoff':'plistoff')+'">'+(mode==='qp'?'Comidas y tarjetas':'Volver')+'</button><button type="button" class="primary" '+(mode==='pick'?'data-act="npnew"':'data-cardnew="prod"')+'>+ Nuevo producto</button></div></div>';
 }
 function prodList(st){return catalog(st,'list')}
 function recentProds(){
@@ -1720,7 +1720,7 @@ document.addEventListener('click',function(e){
  var t=e.target.closest(SEL);
  if(!t){if(e.target.id==='scrim')closeSheet();return}
  var d=t.dataset,st=SH&&SH.st;
- if(d.open){openSheet(d.open)}
+ if(d.open){if(d.qpfirst&&d.open==='comida'){var s0=INIT.comida();s0.qpick=true;s0.qpHome=true;openSheet('comida',s0)}else openSheet(d.open)}
  else if(d.quick){var ml=d.quick==='vaso'?db.vasoMl:+d.quick,en=add({type:'agua',ml:ml});toast('Agregaste '+fmt(ml)+' ml de agua',en.id)}
  else if(d.undo){removeEntry(d.undo);$('#toast').hidden=true}
  else if(d.tab)showTab(d.tab);
@@ -1787,9 +1787,9 @@ function act(a){
  else if(a==='import')doImport();
  else if(a==='recover'){var ep=ongoingEp();if(ep){ep.fin=new Date().toISOString();persist();renderAll();if(SH&&SH.kind==='molestia')drawSheet();toast('Me alegra. Marqué tu recuperación.')}}
  else if(a==='qpickon'&&st){st.pqv='';st.qpick=true;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
- else if(a==='qpickoff'&&st){st.qpick=false;drawSheet();$('#sheetForm').scrollTop=0}
- else if(a==='qpback'&&st){st.qp=null;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
- else if(a==='qplog'&&st&&st.qp){var qpr=findProd(st.qp.pid),qc=numv(st.qp.cant);if(!(qc>0)){st.err='Escribe '+cuantos(qpr.unidad)+' comiste.';drawSheet();return}logProd(qpr,qc,st.momento);toast(st.momento+': '+qpr.nombre+' '+fmt(qc)+' '+uShort(qpr.unidad));st.qp=null;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
+ else if(a==='qpickoff'&&st){st.qpick=false;st.qpHome=false;drawSheet();$('#sheetForm').scrollTop=0}
+ else if(a==='qpback'&&st){st.qp=null;if(st.qpHome)st.qpick=true;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
+ else if(a==='qplog'&&st&&st.qp){var qpr=findProd(st.qp.pid),qc=numv(st.qp.cant);if(!(qc>0)){st.err='Escribe '+cuantos(qpr.unidad)+' comiste.';drawSheet();return}logProd(qpr,qc,st.momento);toast(st.momento+': '+qpr.nombre+' '+fmt(qc)+' '+uShort(qpr.unidad));st.qp=null;st.err='';if(st.qpHome)st.qpick=true;drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='pliston'&&st){st.pqv='';st.plist=true;st.err='';drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='plistoff'&&st){st.plist=false;drawSheet();$('#sheetForm').scrollTop=0}
  else if(a==='cdsave'&&st&&SH.kind==='gym'){st.cdOpen=true;saveCardio()}
@@ -1869,7 +1869,7 @@ document.addEventListener('pointerup',endDrag);document.addEventListener('pointe
 document.addEventListener('toggle',function(e){if(e.target&&e.target.classList&&e.target.classList.contains('dsec')){dOpen[e.target.id.slice(3)]=e.target.open;return}if(!SH||!e.target)return;if(e.target.id==='prDet')SH.st.prOpen=e.target.open;if(e.target.id==='cardsDet')SH.st.cardsOpen=e.target.open;if(e.target.id==='cdDet')SH.st.cdOpen=e.target.open;if(e.target.id==='recDet')SH.st.recOpen=e.target.open;if(e.target.id==='filDet')SH.st.filOpen=e.target.open},true);
 document.addEventListener('keydown',function(e){
  if(e.key==='Escape'&&SH){closeSheet();return}
- var t=e.target;if((e.key==='Enter'||e.key===' ')&&t&&t.getAttribute&&t.getAttribute('role')==='button'&&t.dataset.open){e.preventDefault();openSheet(t.dataset.open)}
+ var t=e.target;if((e.key==='Enter'||e.key===' ')&&t&&t.getAttribute&&t.getAttribute('role')==='button'&&t.dataset.open){e.preventDefault();if(t.dataset.qpfirst){var s1=INIT.comida();s1.qpick=true;s1.qpHome=true;openSheet('comida',s1)}else openSheet(t.dataset.open)}
 });
 $('#sheetClose').addEventListener('click',sheetBack);
 function sheetBack(){
@@ -1881,8 +1881,8 @@ function sheetBack(){
   if(st.ed){st.ed=null;return re()}
   if(st.np){st.np=null;return re()}
   if(st.plist){st.plist=false;return re()}
-  if(st.qp){st.qp=null;return re()}
-  if(st.qpick){st.qpick=false;return re()}
+  if(st.qp){st.qp=null;if(st.qpHome)st.qpick=true;return re()}
+  if(st.qpick&&!st.qpHome){st.qpick=false;return re()}
   if(st.prev){st.prev=null;st.porc=1;return re()}
  }
  if((k==='suple'||k==='molestia')&&st.ed){st.ed=null;return re()}
