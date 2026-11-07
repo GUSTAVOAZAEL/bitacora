@@ -1435,10 +1435,13 @@ function catalog(st,mode){
  return '<div class="cat-top"><h3>'+(mode==='pick'?'Elige un producto':mode==='qp'?'Registrar producto':'Mis productos')+'</h3>'+
   (list.length>6?'<span class="inp"><input id="pq" type="text" placeholder="Buscar producto" autocomplete="off" aria-label="Buscar producto"></span>':'')+
   (list.length>1?'<div class="chips">'+chip('az','A–Z')+chip('p','Proteína')+chip('c','Carbos')+chip('g','Grasas')+chip('kcal','kcal')+'</div>'+(sort!=='az'?baseSeg('pbase',pb,sort)+'<span class="mini">Más '+MNAME[sort]+' primero, '+(pb==='k'?'por cada 100 kcal':'por 100 g o ml (o por unidad)')+'</span>':''):'')+'</div>'+
-  (list.length?'<div class="list">'+rows+'</div>':'<p class="empty">Aún no tienes productos. Crea el primero con su tabla nutrimental.</p>')+
+  (list.length?'<div class="list">'+rows+'</div><p class="empty" id="pqEmpty" hidden>No hay productos con ese nombre.</p>':'<p class="empty">Aún no tienes productos. Crea el primero con su tabla nutrimental.</p>')+
   '<div class="cat-bot"><div class="actions"><button type="button" class="ghost" data-act="'+(mode==='pick'?'pickoff':mode==='qp'?'qpickoff':'plistoff')+'">'+(mode==='qp'?'Comidas y tarjetas':'Volver')+'</button><button type="button" class="primary" '+(mode==='pick'?'data-act="npnew"':'data-cardnew="prod"')+'>+ Nuevo producto</button></div></div>';
 }
 function prodList(st){return catalog(st,'list')}
+/* búsqueda en el catálogo: sin distinguir mayúsculas ni acentos */
+function normTxt(x){return String(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim()}
+function pqFilter(v){var q=normTxt(v),n=0;$$('.cat-top~.list [data-pname]').forEach(function(b){var hide=!!q&&normTxt(b.dataset.pname).indexOf(q)<0;b.hidden=hide;if(!hide)n++});var em=$('#pqEmpty');if(em)em.hidden=!(q&&!n)}
 function recentProds(){
  var seen={},out=[];
  sorted().forEach(function(e){if(out.length>=8||e.type!=='comida')return;
@@ -1601,7 +1604,7 @@ function drawSheet(){
  if(!SH)return;var f=$('#sheetForm'),sc=f.scrollTop;var pqA=document.activeElement&&document.activeElement.id==='pq';
  var cs=SH.st,noDay=SH.kind==='prod'||SH.kind==='tema'||(SH.kind==='comida'&&(cs.np||cs.plist||cs.qpick||(cs.ed&&(cs.ed.pick||cs.ed.np))));
  f.innerHTML=(noDay?'':dayBar())+VIEWS[SH.kind](SH.st);
- var pqI=$('#pq');if(pqI&&SH.st.pqv){pqI.value=SH.st.pqv;var q0=SH.st.pqv.trim().toLowerCase();$$('[data-ingadd],[data-pedit]').forEach(function(b){b.hidden=!!q0&&b.dataset.pname.indexOf(q0)<0});if(pqA)try{pqI.focus({preventScroll:true})}catch(_){}}f.scrollTop=sc;
+ var pqI=$('#pq');if(pqI&&SH.st.pqv){pqI.value=SH.st.pqv;pqFilter(SH.st.pqv);if(pqA)try{pqI.focus({preventScroll:true})}catch(_){}}f.scrollTop=sc;
  if(SH.kind==='sueno')updateRing();
 }
 function toast(msg,undo){
@@ -1820,7 +1823,7 @@ document.addEventListener('input',function(e){
  if(t.id==='shTime'){if(t.value){SH.time=t.value;var nt=$('#dayNoteT');if(nt)nt.textContent=t.value}return}
  if(t.dataset.int){st.int=+t.value;var ib=$('.intn');if(ib){ib.textContent=st.int+' · '+INT[st.int];ib.style.color=INTCOL[st.int]}return}
  if(t.dataset.emo){if(e.isComposing)return;var gx=lastGrapheme(t.value);if(gx){setP(SH.st,t.dataset.emo,gx);if(t.dataset.emo==='ed.emoji'&&SH.st.ed)SH.st.ed.photo='';if(t.value!==gx)t.value=gx}return}
- if(t.id==='pq'){var q=(t.value||'').trim().toLowerCase();SH.st.pqv=t.value;$$('[data-ingadd],[data-pedit]').forEach(function(b){b.hidden=!!q&&b.dataset.pname.indexOf(q)<0});return}
+ if(t.id==='pq'){SH.st.pqv=t.value;pqFilter(t.value);return}
  if(t.dataset.b){setP(st,t.dataset.b,t.value);if(t.dataset.b.indexOf('ed.ings.')===0)updIngs();if(t.dataset.b==='qp.cant'&&st.qp){var qt=$('#qpTot');if(qt)qt.innerHTML=macroStats(qpMacros(st.qp),1)}}
  else if(t.dataset.bm){st.w[t.dataset.bm]=t.value;refreshGym(t.dataset.bm)}
  if(t.dataset.b&&t.dataset.b.indexOf('cd.')===0&&SH.kind==='gym'){var cb=$('[data-act="cdsave"]'),ok2=cdSaved(st);if(cb){cb.className=(ok2?'primary':'ghost')+' small';cb.textContent=ok2?'✓ Cardio guardado':'Guardar cardio'}}
